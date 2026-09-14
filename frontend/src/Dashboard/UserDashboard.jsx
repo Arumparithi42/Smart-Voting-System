@@ -12,9 +12,11 @@ import HelpSupportPage from './Help';
 import Header from '../components/Header/Header';
 import CreateElection from './ElectionList';
 import ElectionList from './ElectionList';
+import LiveResults from '../pages/LiveResults';
+import RequireAdmin from '../routes/RequireAdmin';
 
 const UserDashboard = () => {
-  const { isSignedIn, user } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
   const navigate = useNavigate();
   const clerkId= user?.id;
   const [isAdmin, setIsAdmin] = useState(false);
@@ -45,6 +47,8 @@ const UserDashboard = () => {
   }, [isSignedIn, user]);
   
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
     const checkAdminStatus = async () => {
       try {
         const response = await axiosInstance.post('/api/check-admin', { clerkId });
@@ -55,7 +59,7 @@ const UserDashboard = () => {
     };
 
     checkAdminStatus();
-  }, [clerkId]);
+  }, [isLoaded, isSignedIn, clerkId]);
 
   return (
     <div className="min-h-screen">
@@ -66,6 +70,14 @@ const UserDashboard = () => {
         <Route path="/" element={<MainDashBoard isAdmin={isAdmin} />} />
         <Route path="/elections" element={<ElectionList isAdmin={isAdmin} />} />
         <Route path="/help" element={<HelpSupportPage />} />
+        <Route
+          path="/live-results/:electionId"
+          element={
+            <RequireAdmin>
+              <LiveResults />
+            </RequireAdmin>
+          }
+        />
       </Routes>
     </div>
   );

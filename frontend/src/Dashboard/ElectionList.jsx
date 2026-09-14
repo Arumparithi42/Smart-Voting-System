@@ -91,12 +91,20 @@ const ElectionList = ({ isAdmin }) => {
                     )}
 
                     {election.status === "ongoing" && isAdmin && (
-                      <button
-                        onClick={() => handleStopElection(election._id)}
-                        className="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700"
-                      >
-                        Stop
-                      </button>
+                      <div className="flex gap-2">
+                        <Link
+                          to={`/dashboard/live-results/${election._id}`}
+                          className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                        >
+                          Live Results
+                        </Link>
+                        <button
+                          onClick={() => handleStopElection(election._id)}
+                          className="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700"
+                        >
+                          Stop
+                        </button>
+                      </div>
                     )}
 
                     {election.status === "completed" && (

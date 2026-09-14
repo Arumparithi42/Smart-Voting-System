@@ -1,15 +1,23 @@
 import express from 'express';
 import User from "../models/User.js";
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Route to add a new user if clerkId is unique
-router.post('/register', async (req, res) => {
+// Route to add a new user if clerkId is unique.
+// requireAuth ensures the caller has a real Clerk session; we then check
+// that the clerkId in the body matches the verified session so a caller
+// can't create/read back a User record for someone else's clerkId.
+router.post('/register', requireAuth, async (req, res) => {
     const { clerkId, email, firstName, lastName, profileUrl } = req.body;
 
     // Basic validation
     if (!clerkId || !email) {
         return res.status(400).json({ message: 'ClerkId and email are required' });
+    }
+
+    if (clerkId !== req.clerkId) {
+        return res.status(403).json({ message: 'clerkId does not match the authenticated user' });
     }
 
     try {

@@ -16,6 +16,10 @@ import ElectionDetail from "../pages/ElectionDetail.jsx";
 import Vote from "../pages/Vote.jsx";
 import Result from '../pages/Result.jsx';
 import Explore from "../pages/Explore.jsx";
+import VerifyReceipt from "../pages/VerifyReceipt.jsx";
+import RequireAdmin from "./RequireAdmin.jsx";
+import VoterLogin from "../pages/VoterLogin.jsx";
+import VoterRegistry from "../pages/VoterRegistry.jsx";
 
 const Routers = () => {
   return (
@@ -26,13 +30,44 @@ const Routers = () => {
       <Route path="/elections" element={<Elections/>} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/gases" element={<Doctors />} />
-      <Route path="/createElection" element={<CreateElection/>} />
-      <Route path="/createELection" element={<CreateElection/>} />
-      <Route path="/elections/:id" element={<ElectionDetail/>} />
+      <Route path="/voter-login" element={<VoterLogin />} />
+      <Route
+        path="/voter-registry"
+        element={
+          <RequireAdmin>
+            <VoterRegistry />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/createElection"
+        element={
+          <RequireAdmin>
+            <CreateElection />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/createELection"
+        element={
+          <RequireAdmin>
+            <CreateElection />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/elections/:id"
+        element={
+          <RequireAdmin>
+            <ElectionDetail />
+          </RequireAdmin>
+        }
+      />
       <Route path='/dashboard/*' element={< UserDashboard/>}></Route>
       <Route path="/vote/:electionId" element={<Vote />} />
       <Route path="/explore/:electionId" element={<Explore/>} />
       <Route path="/result/:electionId" element={<Result/>} />
+      <Route path="/verify-receipt" element={<VerifyReceipt/>} />
       <Route
         path="/doctors/profile/me"
         element={
