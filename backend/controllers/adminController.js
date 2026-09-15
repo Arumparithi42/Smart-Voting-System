@@ -82,6 +82,10 @@ export const startElection = async (req, res) => {
     const election = await Election.findById(electionId);
     if (!election) return res.status(404).json({ message: 'Election not found' });
 
+    if (!election.candidates || election.candidates.length === 0) {
+      return res.status(400).json({ message: 'Cannot start election: add at least one candidate first' });
+    }
+
     election.status = 'ongoing';
     await election.save();
     res.status(200).json({ message: 'Election started', election });

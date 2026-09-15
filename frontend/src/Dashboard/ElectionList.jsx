@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axiosInstance from "../utils/axiosInstance";
 import { useUser } from "@clerk/clerk-react";
+import { toast } from "react-toastify";
 
 const ElectionList = ({ isAdmin }) => {
   const [elections, setElections] = useState([]);
@@ -26,12 +27,18 @@ const ElectionList = ({ isAdmin }) => {
   
 
   // Function to handle starting the election
-  const handleStartElection = async (electionId) => {
+  const handleStartElection = async (electionId, candidateCount) => {
+    if (!candidateCount || candidateCount === 0) {
+      toast.error("Add at least one candidate before starting the election");
+      return;
+    }
     try {
-      const response = await axiosInstance.put(`/api/admin/elections/${electionId}/start`);
+      await axiosInstance.put(`/api/admin/elections/${electionId}/start`);
+      toast.success("Election started");
       setRefresh(!refresh);
     } catch (error) {
       console.error("Error starting election:", error);
+      toast.error(error?.response?.data?.message || "Error starting election");
     }
   };
 
@@ -82,8 +89,16 @@ const ElectionList = ({ isAdmin }) => {
                           Add Candidate
                         </Link>
                         <button
-                          onClick={() => handleStartElection(election._id)}
-                          className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                          onClick={() =>
+                            handleStartElection(election._id, election.candidates?.length)
+                          }
+                          disabled={!election.candidates || election.candidates.length === 0}
+                          title={
+                            !election.candidates || election.candidates.length === 0
+                              ? "Add at least one candidate before starting"
+                              : "Start election"
+                          }
+                          className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
                         >
                           Start
                         </button>

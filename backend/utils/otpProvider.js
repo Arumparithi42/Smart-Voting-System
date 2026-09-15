@@ -1,7 +1,8 @@
 // Abstracts "send this OTP to this phone number" behind a swappable
 // provider, selected via OTP_PROVIDER in the environment. No API keys are
 // hard-coded anywhere - a real provider reads its credentials from env
-// vars when you implement it.
+// vars.
+import twilio from 'twilio';
 export async function sendOtp(phoneNumber, otp) {
   const provider = process.env.OTP_PROVIDER || 'mock';
 
@@ -15,13 +16,28 @@ export async function sendOtp(phoneNumber, otp) {
   }
 
   if (provider === 'twilio') {
-    // Example wiring for a real provider. Left unimplemented on purpose -
-    // the project has no SMS dependency installed, and adding one without
-    // real credentials to test against isn't useful. To go live:
-    //   1. npm install twilio
-    //   2. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
-    //   3. Implement the actual client.messages.create(...) call here.
-    throw new Error('OTP_PROVIDER=twilio is not yet implemented - see comments in utils/otpProvider.js');
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_FROM_NUMBER;
+    const countryCode = process.env.OTP_COUNTRY_CODE || '+91';
+
+    if (!accountSid || !authToken || !fromNumber) {
+      throw new Error('Twilio OTP is missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_FROM_NUMBER');
+    }
+
+    const normalizedPhone = String(phoneNumber).trim().replace(/\D/g, '');
+    const toNumber = normalizedPhone.startsWith(countryCode.replace('+', ''))
+      ? `+${normalizedPhone}`
+      : `${countryCode}${normalizedPhone.replace(/^0+/, '')}`;
+    const client = twilio(accountSid, authToken);
+
+    await client.messages.create({
+      body: `Your Smart Voting System verification code is ${otp}. It expires in 5 minutes.`,
+      from: fromNumber,
+      to: toNumber,
+    });
+
+    return { provider: 'twilio', delivered: true };
   }
 
   throw new Error(`Unknown OTP_PROVIDER: ${provider}`);
