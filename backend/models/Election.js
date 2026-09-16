@@ -6,6 +6,20 @@ const electionSchema = new mongoose.Schema(
     description: { type: String },
     candidates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Candidate' }], // Array of candidate IDs
     status: { type: String, enum: ['upcoming', 'ongoing', 'completed'], default: 'upcoming' },
+    startTime: { type: Date },
+    endTime: { type: Date },
+    resultFinalized: { type: Boolean, default: false },
+    finalizedAt: { type: Date },
+    winner: {
+      candidateIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Candidate' }],
+      votes: { type: Number },
+      isTie: { type: Boolean }
+    },
+    turnout: {
+      eligibleVoters: { type: Number },
+      votesCast: { type: Number },
+      percentage: { type: Number }
+    },
     voters: [{
       clerkId: { type: String, required: true, ref: 'User' },
       // A voter-facing proof-of-vote. It is derived from (electionId, clerkId,

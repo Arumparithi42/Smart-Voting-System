@@ -58,7 +58,7 @@ const ElectionList = ({ isAdmin }) => {
    const filteredElections = isAdmin
    ? elections
    : elections.filter((election) =>
-       election.voters.some((voter) => voter.clerkId === user?.id)
+       election.voters?.some((voter) => voter.clerkId === user?.id)
      );
 
   return (
@@ -80,7 +80,7 @@ const ElectionList = ({ isAdmin }) => {
                   <h2 className="text-xl font-bold">{election.title}</h2>
                   <p className="text-sm text-gray-600">{election.description}</p>
                   <div className="mt-4 flex justify-between">
-                    {election.status === "upcoming" && isAdmin && (
+                    {election.effectiveStatus === "upcoming" && isAdmin && (
                       <>
                         <Link
                           to={`/elections/${election._id}`}
@@ -105,7 +105,7 @@ const ElectionList = ({ isAdmin }) => {
                       </>
                     )}
 
-                    {election.status === "ongoing" && isAdmin && (
+                    {election.effectiveStatus === "ongoing" && isAdmin && (
                       <div className="flex gap-2">
                         <Link
                           to={`/dashboard/live-results/${election._id}`}
@@ -122,7 +122,7 @@ const ElectionList = ({ isAdmin }) => {
                       </div>
                     )}
 
-                    {election.status === "completed" && (
+                    {election.effectiveStatus === "completed" && (
                       <Link
                         to={`/result/${election._id}`}
                         className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"

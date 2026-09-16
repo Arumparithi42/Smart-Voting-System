@@ -11,6 +11,9 @@ export default function Component() {
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0)
   const[title, setTitle] = useState('');
   const [candidates, setCandidates] = useState([]);
+  const [turnout, setTurnout] = useState(null);
+  const [winnerData, setWinnerData] = useState(null);
+  const [isTie, setIsTie] = useState(false);
   const { electionId } = useParams()
 
   useEffect(() => {
@@ -22,21 +25,17 @@ export default function Component() {
   useEffect(() => {
     const fetchElections = async () => {
       try {
-        const response = await axiosInstance.get(`/api/elections/${electionId}`);
+        const response = await axiosInstance.get(`/api/elections/${electionId}/results`);
         // console.log('Fetched election data:', response.data);
-        setTitle(response.data.title);
-        const fetchedCandidates = response.data.candidates.map((candidate, index) => ({
+        setTitle(response.data.electionTitle);
+        if (response.data.turnout) setTurnout(response.data.turnout);
+        if (response.data.winner) setWinnerData(response.data.winner);
+        setIsTie(response.data.isTie || false);
+        
+        const fetchedCandidates = response.data.results.map((candidate) => ({
           ...candidate,
-          symbol: [
-            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_hwE2DtYle0M11E0IgPGW1D9_XME9YDuLzA&s',
-            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8SwLk1MFck8vyMYnOs4uqokFT9r8FYzY3Sg&s',
-            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy3wnD7m1OqyBWojfPusX_nXGmuNbfHbtzKw&s'
-          ][index % 3],
-          image: [
-            'https://t4.ftcdn.net/jpg/00/99/13/41/240_F_99134157_dFAWZmsNpZ0ghgnU3g1W5I9XcJEnDQGg.jpg',
-            'https://t4.ftcdn.net/jpg/07/68/70/13/240_F_768701333_FqwXnlVGtNRJ1Jg96meJoW279ADdfwff.jpg',
-            'https://t4.ftcdn.net/jpg/07/68/70/11/240_F_768701148_hybb6T10px46wW6gGkxboFWzp47xwUqT.jpg'
-          ][index % 3]
+          symbol: candidate.partySymbolUrl || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_hwE2DtYle0M11E0IgPGW1D9_XME9YDuLzA&s',
+          image: candidate.profilePhotoUrl || 'https://t4.ftcdn.net/jpg/00/99/13/41/240_F_99134157_dFAWZmsNpZ0ghgnU3g1W5I9XcJEnDQGg.jpg'
         }));
         setCandidates(fetchedCandidates);
       } catch (error) {
@@ -45,9 +44,7 @@ export default function Component() {
     };
     fetchElections();
   }, [electionId]);
-
   const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.votes, 0);
-  const winner = candidates.reduce((prev, current) => (prev.votes > current.votes ? prev : current), candidates[0]);
 
   const chartData = {
     labels: candidates.map(candidate => candidate.name),
@@ -89,7 +86,15 @@ export default function Component() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 from-yellow-100 via-yellow-100 to-white">
           <div className="text-center space-y-4 mb-12">
             <h1 className="text-4xl sm:text-5xl font-bold text-blue-900"> {title}</h1>
-            <p className="text-xl text-gray-600">Total Votes Cast: <span className="font-semibold text-blue-700">{totalVotes.toLocaleString()}</span></p>
+            <div className="flex flex-col sm:flex-row justify-center gap-6 mt-4">
+              <p className="text-xl text-gray-600">Total Votes: <span className="font-semibold text-blue-700">{totalVotes.toLocaleString()}</span></p>
+              {turnout && (
+                <>
+                  <p className="text-xl text-gray-600">Eligible Voters: <span className="font-semibold text-blue-700">{turnout.eligibleVoters.toLocaleString()}</span></p>
+                  <p className="text-xl text-gray-600">Turnout: <span className="font-semibold text-blue-700">{turnout.percentage.toFixed(2)}%</span></p>
+                </>
+              )}
+            </div>
           </div>
 
           <div className={`grid ${windowWidth > 768 ? 'md:grid-cols-2' : ''} gap-8`}>
@@ -129,7 +134,21 @@ export default function Component() {
                 <h2 className="text-2xl font-bold mb-6 text-blue-900">Vote Distribution</h2>
                 <Bar data={chartData} options={chartOptions} className="mb-4" />
                 <div className="text-center mt-4">
-                  <h3 className="text-lg font-semibold text-green-600">Winner: {winner?.name}</h3>
+                  {isTie && (
+                     <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded mb-4">
+                        <h3 className="text-xl font-bold">TIE!</h3>
+                        <p className="font-medium text-lg mt-2">Multiple candidates tied with {winnerData?.votes} votes:</p>
+                        <ul className="text-blue-900 font-bold mt-2">
+                          {winnerData?.candidates.map((c, i) => <li key={i}>{c}</li>)}
+                        </ul>
+                     </div>
+                  )}
+                  {!isTie && winnerData && winnerData.votes > 0 && (
+                     <h3 className="text-xl font-semibold text-green-600">Winner: {winnerData.candidates[0]} <span className="text-sm font-normal text-gray-600">({winnerData.votes} votes)</span></h3>
+                  )}
+                  {winnerData && winnerData.votes === 0 && (
+                     <h3 className="text-lg font-semibold text-red-600">No votes cast</h3>
+                  )}
                 </div>
               </div>
             </div>

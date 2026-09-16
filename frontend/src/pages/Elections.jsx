@@ -154,9 +154,9 @@ export default function Component() {
   }, []);
 
   // Separate elections by status
-  const liveElections = elections.filter((election) => election.status === "ongoing");
-  const upcomingElections = elections.filter((election) => election.status === "upcoming");
-  const endedElections = elections.filter((election) => election.status === "completed");
+  const liveElections = elections.filter((election) => election.effectiveStatus === "ongoing");
+  const upcomingElections = elections.filter((election) => election.effectiveStatus === "upcoming");
+  const endedElections = elections.filter((election) => election.effectiveStatus === "completed");
 
   return (
     <div className="from-yellow-100 via-yellow-100 to-white">
@@ -176,14 +176,14 @@ export default function Component() {
                     className="bg-white rounded-xl shadow-lg overflow-hidden"
                   >
                     <div
-                      className={`h-3 ${election.status === "ongoing" ? "bg-green-500" : election.status === "upcoming" ? "bg-yellow-500" : "bg-gray-500"}`}
+                      className={`h-3 ${election.effectiveStatus === "ongoing" ? "bg-green-500" : election.effectiveStatus === "upcoming" ? "bg-yellow-500" : "bg-gray-500"}`}
                       aria-hidden="true"
                     />
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="text-xl font-bold text-[#1E3A8A]">{election.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.status === "ongoing" ? "bg-green-300" : election.status === "upcoming" ? "bg-yellow-300" : "bg-gray-300"}`}>
-                          {election.status}
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.effectiveStatus === "ongoing" ? "bg-green-300" : election.effectiveStatus === "upcoming" ? "bg-yellow-300" : "bg-gray-300"}`}>
+                          {election.effectiveStatus}
                         </span>
                       </div>
                       <p className="text-gray-600 mb-6">{election.description}</p>
@@ -211,14 +211,14 @@ export default function Component() {
                     className="bg-white rounded-xl shadow-lg overflow-hidden"
                   >
                     <div
-                      className={`h-3 ${election.status === "upcoming" ? "bg-yellow-500" : "bg-gray-500"}`}
+                      className={`h-3 ${election.effectiveStatus === "upcoming" ? "bg-yellow-500" : "bg-gray-500"}`}
                       aria-hidden="true"
                     />
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="text-xl font-bold text-[#1E3A8A]">{election.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.status === "upcoming" ? "bg-yellow-300" : "bg-gray-300"}`}>
-                          {election.status}
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.effectiveStatus === "upcoming" ? "bg-yellow-300" : "bg-gray-300"}`}>
+                          {election.effectiveStatus}
                         </span>
                       </div>
                       <p className="text-gray-600 mb-6">{election.description}</p>
@@ -246,14 +246,14 @@ export default function Component() {
                     className="bg-white rounded-xl shadow-lg overflow-hidden"
                   >
                     <div
-                      className={`h-3 ${election.status === "completed" ? "bg-gray-500" : "bg-gray-500"}`}
+                      className={`h-3 ${election.effectiveStatus === "completed" ? "bg-gray-500" : "bg-gray-500"}`}
                       aria-hidden="true"
                     />
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="text-xl font-bold text-[#1E3A8A]">{election.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.status === "completed" ? "bg-gray-300" : "bg-gray-300"}`}>
-                          {election.status}
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.effectiveStatus === "completed" ? "bg-gray-300" : "bg-gray-300"}`}>
+                          {election.effectiveStatus}
                         </span>
                       </div>
                       <p className="text-gray-600 mb-6">{election.description}</p>

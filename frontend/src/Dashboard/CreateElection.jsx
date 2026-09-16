@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 const CreateElection = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const navigate = useNavigate();
 
   const handleCreateElection = async (e) => {
@@ -14,6 +16,8 @@ const CreateElection = () => {
       const response = await axiosInstance.post("/api/admin/elections", {
         title,
         description,
+        startTime,
+        endTime
       });
       
       // After creating, redirect to the elections list page
@@ -49,6 +53,28 @@ const CreateElection = () => {
               className="mt-1 px-4 py-2 w-full border border-gray-300 rounded-md"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600">Start Time</label>
+            <input
+              type="datetime-local"
+              className="mt-1 px-4 py-2 w-full border border-gray-300 rounded-md"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600">End Time</label>
+            <input
+              type="datetime-local"
+              className="mt-1 px-4 py-2 w-full border border-gray-300 rounded-md"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
               required
             />
           </div>

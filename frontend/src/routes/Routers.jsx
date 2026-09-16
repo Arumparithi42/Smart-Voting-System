@@ -20,6 +20,8 @@ import VerifyReceipt from "../pages/VerifyReceipt.jsx";
 import RequireAdmin from "./RequireAdmin.jsx";
 import VoterLogin from "../pages/VoterLogin.jsx";
 import VoterRegistry from "../pages/VoterRegistry.jsx";
+import ApplyCandidate from "../pages/ApplyCandidate.jsx";
+import AdminApplications from "../pages/AdminApplications.jsx";
 
 const Routers = () => {
   return (
@@ -68,6 +70,18 @@ const Routers = () => {
       <Route path="/explore/:electionId" element={<Explore/>} />
       <Route path="/result/:electionId" element={<Result/>} />
       <Route path="/verify-receipt" element={<VerifyReceipt/>} />
+      <Route
+        path="/apply-candidate"
+        element={<ApplyCandidate />}
+       />
+      <Route
+        path="/admin/candidate-applications"
+        element={
+          <RequireAdmin>
+            <AdminApplications />
+          </RequireAdmin>
+        }
+      />
       <Route
         path="/doctors/profile/me"
         element={

@@ -18,19 +18,6 @@ export default function ElectionDetail() {
   const [electionId, setElectionId] = useState('');
   const [loading, setLoading] = useState(true);
 
- 
-  const candidateImages = [
-    'https://t4.ftcdn.net/jpg/00/99/13/41/240_F_99134157_dFAWZmsNpZ0ghgnU3g1W5I9XcJEnDQGg.jpg',
-    'https://t4.ftcdn.net/jpg/07/68/70/13/240_F_768701333_FqwXnlVGtNRJ1Jg96meJoW279ADdfwff.jpg',
-    'https://t4.ftcdn.net/jpg/07/68/70/11/240_F_768701148_hybb6T10px46wW6gGkxboFWzp47xwUqT.jpg'
-  ];
-  
-  const partySymbols = [
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_hwE2DtYle0M11E0IgPGW1D9_XME9YDuLzA&s',
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8SwLk1MFck8vyMYnOs4uqokFT9r8FYzY3Sg&s',
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy3wnD7m1OqyBWojfPusX_nXGmuNbfHbtzKw&s'
-  ];
-
   useEffect(() => {
     const fetchElection = async () => {
       try {
@@ -124,18 +111,18 @@ export default function ElectionDetail() {
                 className="flex items-center p-4 rounded-lg mb-4 bg-gray-50 hover:bg-gray-100 border border-gray-200"
               >
                 <img
-                  src={candidateImages[index % candidateImages.length]}
+                  src={candidate.profilePhotoUrl || 'https://t4.ftcdn.net/jpg/00/99/13/41/240_F_99134157_dFAWZmsNpZ0ghgnU3g1W5I9XcJEnDQGg.jpg'}
                   alt={candidate.name}
                   className="w-20 h-20 rounded-full object-cover mr-4"
                 />
 
                 <div className="flex-1">
-                  <h3 className="text-lg font-medium">{candidate.name}</h3>
-                  <p className="text-gray-600">{candidate.description}</p>
+                  <h3 className="text-lg font-medium">{candidate.name} {candidate.qualification ? `(${candidate.qualification})` : ''}</h3>
+                  <p className="text-gray-600">{candidate.description || candidate.about}</p>
 
                   <div className="flex items-center mt-2">
                     <img
-                      src={partySymbols[index % partySymbols.length]}
+                      src={candidate.partySymbolUrl || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_hwE2DtYle0M11E0IgPGW1D9_XME9YDuLzA&s'}
                       alt={`${candidate.partyName} symbol`}
                       className="w-8 h-8 mr-2"
                     />

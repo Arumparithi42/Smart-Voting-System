@@ -5,7 +5,11 @@ import {
   addCandidateToElection, 
   removeCandidateFromElection, 
   startElection, 
-  endElection 
+  endElection,
+  getApplications,
+  getAdminApplicationById,
+  approveApplication,
+  rejectApplication
 } from '../controllers/adminController.js';
 import { getLiveResults } from '../controllers/votingController.js';
 import { requireAdmin } from '../middleware/auth.js';
@@ -41,5 +45,11 @@ router.put('/elections/:electionId/end', endElection);
 // getElectionResults - showing running totals publicly mid-election can
 // bias turnout.)
 router.get('/elections/:electionId/live-results', getLiveResults);
+
+// Candidate Registration Application Admin Operations
+router.get('/candidate-applications', getApplications);
+router.get('/candidate-applications/:applicationId', getAdminApplicationById);
+router.post('/candidate-applications/:applicationId/approve', approveApplication);
+router.post('/candidate-applications/:applicationId/reject', rejectApplication);
 
 export default router;

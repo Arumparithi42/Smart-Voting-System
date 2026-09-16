@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import Election from '../models/Election.js';
 import Candidate from '../models/Candidate.js';
+import VoterIdentity from '../models/VoterIdentity.js';
+import { getEffectiveElectionStatus } from '../utils/electionStatus.js';
 
 // Get all elections
 export const getAllElections = async (req, res) => {
@@ -11,7 +13,12 @@ export const getAllElections = async (req, res) => {
           path: 'candidates',
           select: 'name partyName votes', 
         });
-      res.status(200).json(elections);
+        
+      const results = elections.map((el) => ({
+        ...el.toObject(),
+        effectiveStatus: getEffectiveElectionStatus(el)
+      }));
+      res.status(200).json(results);
     } catch (error) {
       res.status(500).json({ message: 'Error retrieving elections', error: error.message });
     }
@@ -30,7 +37,12 @@ export const getElectionById = async (req, res) => {
       if (!election) {
         return res.status(404).json({ message: 'Election not found' });
       }
-      res.status(200).json(election);
+      
+      const result = {
+        ...election.toObject(),
+        effectiveStatus: getEffectiveElectionStatus(election)
+      };
+      res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ message: 'Error retrieving election', error: error.message });
     }
@@ -59,10 +71,6 @@ export const castVote = async (req, res) => {
   try {
       const { electionId, candidateId } = req.params;
 
-      // The voter's identity comes from the verified Clerk session
-      // (req.clerkId, set by the requireAuth middleware) - never from the
-      // request body. Previously any caller could supply an arbitrary
-      // clerkId and vote as/for anyone, any number of times.
       const clerkId = req.clerkId;
       if (!clerkId) {
           return res.status(401).json({ message: 'Authentication required' });
@@ -72,7 +80,13 @@ export const castVote = async (req, res) => {
       if (!election) {
           return res.status(404).json({ message: 'Election not found' });
       }
-      if (election.status !== 'ongoing') {
+      
+      if (election.resultFinalized) {
+          return res.status(400).json({ message: 'Results have already been finalized' });
+      }
+
+      const effectiveStatus = getEffectiveElectionStatus(election);
+      if (effectiveStatus !== 'ongoing') {
           return res.status(400).json({ message: 'Election is not currently open for voting' });
       }
 
@@ -91,18 +105,11 @@ export const castVote = async (req, res) => {
       const receiptId = generateReceipt(electionId, clerkId);
       const votedAt = new Date();
 
-      // Record the vote atomically: this single findOneAndUpdate only
-      // succeeds if the election is still ongoing AND this voter hasn't
-      // already been recorded, so two simultaneous requests from the same
-      // voter can't both slip through (the earlier code re-checked the
-      // voters array in JS first, which is a classic check-then-act race).
-      // We deliberately avoid multi-document transactions here since they
-      // require a MongoDB replica set, which a standard/local deployment
-      // may not have.
+      // Check current timing validity and atomic constraints in DB side also natively if available
       const updatedElection = await Election.findOneAndUpdate(
           {
               _id: electionId,
-              status: 'ongoing',
+              status: { $in: ['ongoing', 'upcoming'] }, // Legacy fallback handling if status is still used
               candidates: candidateId,
               'voters.clerkId': { $ne: clerkId },
           },
@@ -111,11 +118,8 @@ export const castVote = async (req, res) => {
       );
 
       if (!updatedElection) {
-          // Someone beat us to it (already voted) or election state changed
-          // between our checks above and now - re-check to give an accurate
-          // message rather than a generic failure.
           const recheck = await Election.findById(electionId);
-          if (!recheck || recheck.status !== 'ongoing') {
+          if (!recheck || getEffectiveElectionStatus(recheck) !== 'ongoing') {
               return res.status(400).json({ message: 'Election is not currently open for voting' });
           }
           return res.status(400).json({ message: 'You have already voted in this election' });
@@ -124,9 +128,6 @@ export const castVote = async (req, res) => {
       try {
           await Candidate.findByIdAndUpdate(candidateId, { $inc: { votes: 1 } });
       } catch (incrementError) {
-          // Roll back the voter record so a failed increment can't silently
-          // lock the voter out of an election they never actually got
-          // counted in.
           await Election.updateOne(
               { _id: electionId },
               { $pull: { voters: { clerkId } } }
@@ -215,7 +216,7 @@ export const getMyVoteStatus = async (req, res) => {
 export const getElectionResults = async (req, res) => {
     try {
         const { electionId } = req.params;
-        const election = await Election.findById(electionId).populate({
+        let election = await Election.findById(electionId).populate({
             path: 'candidates',
             select: 'name partyName votes',
         });
@@ -224,22 +225,77 @@ export const getElectionResults = async (req, res) => {
             return res.status(404).json({ message: 'Election not found' });
         }
 
-        // Check if the election has been completed
-        if (election.status !== 'completed') {
+        const effectiveStatus = getEffectiveElectionStatus(election);
+        if (effectiveStatus !== 'completed') {
             return res.status(400).json({ message: 'Election results are not available until the election is completed' });
         }
 
-        // Return the election results with candidate details and vote counts
+        // Lazy atomic finalization logic
+        if (!election.resultFinalized) {
+            const lock = await Election.findOneAndUpdate(
+                { _id: electionId, resultFinalized: false },
+                { resultFinalized: true, finalizedAt: new Date() },
+                { new: true }
+            );
+
+            if (lock) {
+                const lockPopulated = await Election.findById(lock._id).populate('candidates');
+                const eligibleVoters = await VoterIdentity.countDocuments();
+                const votesCast = lockPopulated.voters.length;
+                const turnout = {
+                    eligibleVoters,
+                    votesCast,
+                    percentage: eligibleVoters > 0 ? (votesCast / eligibleVoters) * 100 : 0
+                };
+
+                let maxVotes = 0;
+                for (const c of lockPopulated.candidates) {
+                    if (c.votes > maxVotes) maxVotes = c.votes;
+                }
+
+                let winners = [];
+                if (maxVotes > 0) {
+                    winners = lockPopulated.candidates.filter(c => c.votes === maxVotes).map(c => c._id);
+                }
+                const isTie = winners.length > 1;
+
+                lockPopulated.winner = { candidateIds: winners, votes: maxVotes, isTie };
+                lockPopulated.turnout = turnout;
+                await lockPopulated.save();
+
+                election = lockPopulated;
+            } else {
+                // Another thread locked it, fetch the newly finalized doc
+                election = await Election.findById(electionId).populate('candidates');
+            }
+        }
+
         const results = election.candidates.map(candidate => ({
+            candidateId: candidate._id,
             name: candidate.name,
             partyName: candidate.partyName,
             votes: candidate.votes,
         }));
+        
+        let winnerDetails = null;
+        if (election.winner) {
+            // Retrieve populated docs for winner info
+            winnerDetails = {
+                candidates: election.candidates.filter(c => election.winner.candidateIds.includes(c._id.toString())).map(c => c.name),
+                votes: election.winner.votes,
+            };
+        }
 
         res.status(200).json({
             electionTitle: election.title,
             description: election.description,
+            effectiveStatus,
             results,
+            turnout: election.turnout,
+            winner: winnerDetails,
+            isTie: election.winner?.isTie || false,
+            resultFinalized: election.resultFinalized,
+            finalizedAt: election.finalizedAt
         });
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving election results', error: error.message });
@@ -247,11 +303,6 @@ export const getElectionResults = async (req, res) => {
 };
 
 
-// Admin-only: live tallies for an election that hasn't closed yet.
-// Kept separate from getElectionResults (which is public but only unlocks
-// once an election is 'completed') on purpose - showing running totals to
-// the public mid-election can bias turnout/voting behaviour (a bandwagon
-// effect), so real voting systems restrict that view to administrators.
 export const getLiveResults = async (req, res) => {
     try {
         const { electionId } = req.params;
@@ -263,8 +314,11 @@ export const getLiveResults = async (req, res) => {
         if (!election) {
             return res.status(404).json({ message: 'Election not found' });
         }
+        
+        const effectiveStatus = getEffectiveElectionStatus(election);
 
         const totalVotes = election.voters.length;
+        const eligibleVoters = await VoterIdentity.countDocuments();
         const results = election.candidates.map(candidate => ({
             name: candidate.name,
             partyName: candidate.partyName,
@@ -273,8 +327,9 @@ export const getLiveResults = async (req, res) => {
 
         res.status(200).json({
             electionTitle: election.title,
-            status: election.status,
+            status: effectiveStatus,
             totalVotes,
+            eligibleVoters,
             results,
         });
     } catch (error) {

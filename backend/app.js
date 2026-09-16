@@ -52,12 +52,14 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import votingRoutes from './routes/voting.js';
 import voterRoutes from './routes/voter.js';
+import applicationRoutes from './routes/applications.js';
 
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api',votingRoutes);
 app.use('/api/voter', voterRoutes);
+app.use('/api/applications', applicationRoutes);
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
