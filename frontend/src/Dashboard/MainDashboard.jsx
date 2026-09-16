@@ -14,9 +14,12 @@ const MainDashBoard = ({isAdmin}) => {
   const quickActions = [
     { title: isAdmin ? "Create Elections" : "Vote Now", icon: "M13 10V3L4 14h7v7l9-11h-7z", route: isAdmin ? "/dashboard/elections" : "/elections", },
     { title: "Voting History", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", route: "/dashboard/elections" },
-    { title: "Upcoming Elections", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z", route: "/elections" },
-    { title: isAdmin ? "Live Elections" : "My Profile", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", route: isAdmin ? "/elections" : "/elctions" }
+    { title: "Upcoming Elections", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z", route: "/elections" }
   ];
+
+  if (isAdmin) {
+    quickActions.push({ title: "Live Elections", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", route: "/elections" });
+  }
 
   return (
     <div className="bg-white text-black items-center pt-28 min-h-screen lg:ml-64 flex flex-col gap-4 justify-between p-8 -mt-14" style={{ height: '500px', width: "83%" }}>
@@ -43,7 +46,7 @@ const MainDashBoard = ({isAdmin}) => {
 
         {/* Quick Actions */}
         <h2 className="mb-4 text-xl font-semibold text-gray-700">Quick Actions</h2>
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} mb-8`}>
           {quickActions.map((action, index) => (
             <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between mb-4">
