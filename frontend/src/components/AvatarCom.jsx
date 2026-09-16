@@ -3,7 +3,7 @@ import Avatar from 'react-avatar';
 import { useUser, SignOutButton } from "@clerk/clerk-react";
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSignOut, faGraduationCap } from '@fortawesome/free-solid-svg-icons';
+import { faSignOut } from '@fortawesome/free-solid-svg-icons';
 
 const AvatarCom = () => {
     const { isLoaded, user } = useUser();
@@ -27,11 +27,6 @@ const AvatarCom = () => {
                             <span className="font-bold text-sm">{user.fullName}</span>
                             <span className="text-gray-500 text-xs">{user.primaryEmailAddress?.emailAddress || 'No email address'}</span>
                         </div>
-                    </li>
-                    <hr className="my-1" />
-                    <li className="flex items-center gap-2 py-1">
-                        <FontAwesomeIcon icon={faGraduationCap} className="text-primary h-4 w-4" />
-                        <Link to="/dashboard" className="font-semibold text-primary text-sm">Dashboard</Link>
                     </li>
                     <hr className="my-1" />
                     <li className="flex justify-center items-center mt-2 bg-blue-700 rounded-md">

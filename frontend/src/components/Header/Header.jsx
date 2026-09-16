@@ -32,6 +32,16 @@ const Header = () => {
           >
             All Election
           </Link>
+          {user && (
+            <Link
+              to="/dashboard"
+              className={`${
+                location.pathname === '/dashboard' ? 'text-orange-500' : 'text-blue-900'
+              } hover:text-amber-500`}
+            >
+              Dashboard
+            </Link>
+          )}
           <Link
             to="/contact"
             className={`${
