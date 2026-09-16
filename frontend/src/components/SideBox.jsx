@@ -1,23 +1,82 @@
 // import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { SignOutButton, useUser } from "@clerk/clerk-react";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 // import { useFirebase } from '../Context/FirebaseContext';
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faSignOut } from '@fortawesome/free-solid-svg-icons';
 
 const SideBox = ({ isAdmin }) => {
-   // const { user, signoutUser } = useFirebase();
-   // if (!user) {
-   //     return null; // Or handle the case when user is null
-   // }
    const location = useLocation();
 
+   const [sidebarWidth, setSidebarWidth] = useState(() => {
+      const savedWidth = localStorage.getItem('sidebarWidth');
+      const parsed = parseInt(savedWidth, 10);
+      if (!isNaN(parsed) && parsed >= 180 && parsed <= 360) {
+         return parsed;
+      }
+      return 256;
+   });
+
+   const [isResizing, setIsResizing] = useState(false);
+
+   const startResizing = useCallback((e) => {
+      e.preventDefault();
+      setIsResizing(true);
+   }, []);
+
+   const stopResizing = useCallback(() => {
+      setIsResizing(false);
+      localStorage.setItem('sidebarWidth', sidebarWidth.toString());
+   }, [sidebarWidth]);
+
+   const resize = useCallback((e) => {
+      if (isResizing) {
+         let newWidth = e.clientX;
+         if (newWidth < 180) newWidth = 180;
+         if (newWidth > 360) newWidth = 360;
+         setSidebarWidth(newWidth);
+      }
+   }, [isResizing]);
+
+   useEffect(() => {
+      if (isResizing) {
+         document.body.style.userSelect = 'none';
+         window.addEventListener('mousemove', resize);
+         window.addEventListener('mouseup', stopResizing);
+      } else {
+         document.body.style.userSelect = '';
+         window.removeEventListener('mousemove', resize);
+         window.removeEventListener('mouseup', stopResizing);
+      }
+
+      return () => {
+         document.body.style.userSelect = '';
+         window.removeEventListener('mousemove', resize);
+         window.removeEventListener('mouseup', stopResizing);
+      };
+   }, [isResizing, resize, stopResizing]);
 
    return (
+      <>
+      <style>
+         {`
+            @media (min-width: 1024px) {
+               #logo-sidebar {
+                  width: ${sidebarWidth}px !important;
+               }
+               .lg\\:ml-64 {
+                  margin-left: ${sidebarWidth}px !important;
+               }
+            }
+         `}
+      </style>
 
       <aside id="logo-sidebar" className="fixed top-0 bg-slate-50 left-0 z-10 w-64 h-screen pt-20 transition-transform -translate-x-full  border-r border-gray-200 sm:translate-x-0" aria-label="Sidebar">
-
+         <div
+            onMouseDown={startResizing}
+            className="absolute top-0 right-0 w-2 h-full cursor-col-resize z-50 hover:bg-blue-400/30 active:bg-blue-400/50 transition-colors"
+         />
          <div className="h-full px-3 pb-4 overflow-y-auto bg-slate-50 mt-5 flex justify-between flex-col">
 
             <ul className="space-y-2 font-bold text-xl font-royal4 ">
@@ -150,6 +209,7 @@ const SideBox = ({ isAdmin }) => {
             </ul>
          </div>
       </aside>
+      </>
    );
 }
 
