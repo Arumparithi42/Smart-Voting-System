@@ -135,6 +135,7 @@
 
 import { useEffect, useState } from "react";
 import Header from "../components/Header/Header";
+import ElectionCountdown from "../components/ElectionCountdown";
 import { Link } from "react-router-dom";
 import axiosInstance from "../utils/axiosInstance";
 
@@ -187,6 +188,10 @@ export default function Component() {
                         </span>
                       </div>
                       <p className="text-gray-600 mb-6">{election.description}</p>
+                      <ElectionCountdown
+                        endTime={election.endTime}
+                        className="text-sm font-semibold text-red-600 mb-6"
+                      />
                       <Link
                         to={`/vote/${election._id}`}
                         className="bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
+import ElectionCountdown from '../components/ElectionCountdown';
 import { CheckCircle, ChevronRight, Copy, ShieldCheck, Loader2 } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUser } from "@clerk/clerk-react";
@@ -13,6 +14,7 @@ export default function Vote() {
   const [effectiveStatus, setEffectiveStatus] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const [isVoting, setIsVoting] = useState(false); // To handle the loading state
   const [checkingStatus, setCheckingStatus] = useState(true); // "have they already voted?" check, before showing the ballot
   const [voteStatus, setVoteStatus] = useState(null); // 'success' | 'already-voted' | 'error' | null
@@ -46,6 +48,18 @@ export default function Vote() {
     fetchElections();
   }, [electionId]);
 
+  useEffect(() => {
+    if (!endTime) return undefined;
+
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [endTime]);
+
+  const timeRemaining = endTime
+    ? Math.max(0, new Date(endTime).getTime() - currentTime)
+    : null;
+  const electionExpired = effectiveStatus === 'ongoing' && timeRemaining === 0;
+
   // Checks BEFORE rendering the ballot whether this user already voted in
   // this election, so revisiting the page shows their receipt straight
   // away instead of letting them go through the ballot again and only
@@ -78,6 +92,12 @@ export default function Vote() {
   }, [isLoaded, isSignedIn, electionId]);
 
   const handleSubmit = async () => {
+    if (electionExpired) {
+      setErrorMessage('Voting has ended for this election.');
+      setVoteStatus('error');
+      return;
+    }
+
     const selectedCandidateData = candidates.find(candidate => candidate.name === selectedCandidate);
     setIsVoting(true);
     setErrorMessage('');
@@ -219,7 +239,14 @@ export default function Vote() {
         
         {effectiveStatus === 'ongoing' && (
           <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 max-w-3xl mx-auto mb-6 text-center text-lg font-semibold">
-            Voting is currently open. Ends at: {endTime ? new Date(endTime).toLocaleString() : 'TBD'}
+            {electionExpired ? 'Voting has ended.' : 'Voting is currently open.'}
+            {!electionExpired && (
+              <>
+                <br />
+                Ends at: {endTime ? new Date(endTime).toLocaleString() : 'TBD'}
+                <ElectionCountdown endTime={endTime} className="mt-2 text-xl" />
+              </>
+            )}
           </div>
         )}
 
@@ -229,7 +256,7 @@ export default function Vote() {
           </div>
         )}
 
-        <div className={`max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6 ${effectiveStatus !== 'ongoing' ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6 ${effectiveStatus !== 'ongoing' || electionExpired ? 'opacity-50 pointer-events-none' : ''}`}>
           <h2 className="text-2xl font-semibold mb-4">Select Your Candidate</h2>
           {candidates.map((candidate, index) => (
             <label
