@@ -1,4 +1,4 @@
-import React, { useEffect,useState } from 'react';
+import React, { useEffect } from 'react';
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { useUser } from '@clerk/clerk-react';
 import axiosInstance from '../utils/axiosInstance';
@@ -14,12 +14,22 @@ import CreateElection from './ElectionList';
 import ElectionList from './ElectionList';
 import LiveResults from '../pages/LiveResults';
 import RequireAdmin from '../routes/RequireAdmin';
+import RequireRole from '../routes/RequireRole';
+import useUserRole from '../hooks/useUserRole';
+import MyComplaints from '../pages/MyComplaints';
+import OfficerProposals from '../pages/officer/OfficerProposals';
+import OfficerElections from '../pages/officer/OfficerElections';
+import ElectionResultsReview from '../pages/ElectionResultsReview';
+import AdminProposals from '../pages/admin/AdminProposals';
+import AdminComplaints from '../pages/admin/AdminComplaints';
+import AdminUsers from '../pages/admin/AdminUsers';
 
 const UserDashboard = () => {
   const { isLoaded, isSignedIn, user } = useUser();
   const navigate = useNavigate();
-  const clerkId= user?.id;
-  const [isAdmin, setIsAdmin] = useState(false);
+  // Role is display-only here; every API route re-checks it server-side.
+  const { role } = useUserRole();
+  const isAdmin = role === 'admin';
 
   useEffect(() => {
     const storeUserData = async () => {
@@ -46,28 +56,26 @@ const UserDashboard = () => {
     storeUserData();
   }, [isSignedIn, user]);
   
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-
-    const checkAdminStatus = async () => {
-      try {
-        const response = await axiosInstance.post('/api/check-admin', { clerkId });
-        setIsAdmin(response.data.isAdmin);
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-      }
-    };
-
-    checkAdminStatus();
-  }, [isLoaded, isSignedIn, clerkId]);
-
   return (
     <div className="min-h-screen">
       {/* <Header className=' relative -top-6'/> */}
-      <SideBox isAdmin={isAdmin} />
+      <SideBox isAdmin={isAdmin} role={role} />
 
       <Routes>
-        <Route path="/" element={<MainDashBoard isAdmin={isAdmin} />} />
+        <Route path="/" element={<MainDashBoard isAdmin={isAdmin} role={role} />} />
+        <Route path="/complaints" element={<MyComplaints />} />
+
+        {/* Election Officer */}
+        <Route path="/officer/proposals" element={<RequireRole roles={['officer']}><OfficerProposals /></RequireRole>} />
+        <Route path="/officer/elections" element={<RequireRole roles={['officer']}><OfficerElections /></RequireRole>} />
+        <Route path="/officer/results/:electionId" element={<RequireRole roles={['officer']}><ElectionResultsReview mode="officer" /></RequireRole>} />
+
+        {/* Admin */}
+        <Route path="/admin/proposals" element={<RequireAdmin><AdminProposals /></RequireAdmin>} />
+        <Route path="/admin/complaints" element={<RequireAdmin><AdminComplaints /></RequireAdmin>} />
+        <Route path="/admin/users" element={<RequireAdmin><AdminUsers /></RequireAdmin>} />
+        <Route path="/admin/results/:electionId" element={<RequireAdmin><ElectionResultsReview mode="admin" /></RequireAdmin>} />
+
         <Route path="/elections" element={<ElectionList isAdmin={isAdmin} />} />
         <Route path="/help" element={<HelpSupportPage />} />
         <Route

@@ -6,7 +6,40 @@ import { useState, useEffect, useCallback } from 'react';
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faSignOut } from '@fortawesome/free-solid-svg-icons';
 
-const SideBox = ({ isAdmin }) => {
+// Compact sidebar entry for the role-specific links below (same styling as
+// the hand-written entries).
+const NavItem = ({ to, label, active }) => (
+   <li>
+      <Link
+         to={to}
+         className={`flex items-center p-2 rounded-lg text-textmain group ${active ? 'bg-blue-600 text-white' : ' hover:bg-gray-300 text-blue-600'}`}
+      >
+         <svg className={`w-5 h-5 transition duration-75 ${active ? 'text-white' : 'text-textmain'}`} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M4 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.414A2 2 0 0 0 17.414 6L14 2.586A2 2 0 0 0 12.586 2H4Zm2 7h8v2H6V9Zm0 4h8v2H6v-2Z" />
+         </svg>
+         <span className={`flex-1 ms-3 whitespace-nowrap ${active ? 'text-white' : 'text-textmain'} hover:text-white`}>{label}</span>
+      </Link>
+   </li>
+);
+
+// Links per role. UX only - the backend enforces every permission.
+const ROLE_LINKS = {
+   user: [
+      { to: '/dashboard/complaints', label: 'My Complaints' },
+   ],
+   officer: [
+      { to: '/dashboard/officer/proposals', label: 'Election Proposals' },
+      { to: '/dashboard/officer/elections', label: 'Monitor Elections' },
+      { to: '/dashboard/complaints', label: 'My Complaints' },
+   ],
+   admin: [
+      { to: '/dashboard/admin/proposals', label: 'Election Proposals' },
+      { to: '/dashboard/admin/complaints', label: 'Complaints' },
+      { to: '/dashboard/admin/users', label: 'Officers & Users' },
+   ],
+};
+
+const SideBox = ({ isAdmin, role }) => {
    const location = useLocation();
 
    const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -162,6 +195,9 @@ const SideBox = ({ isAdmin }) => {
                </li>
                </>
                )}
+               {(ROLE_LINKS[role || (isAdmin ? 'admin' : 'user')] || []).map((link) => (
+                  <NavItem key={link.to} to={link.to} label={link.label} active={location.pathname.startsWith(link.to)} />
+               ))}
                <li>
                   <Link
                      to="/dashboard/elections"

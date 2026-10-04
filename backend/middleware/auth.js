@@ -46,6 +46,39 @@ export const requireAdmin = async (req, res, next) => {
 };
 
 /**
+ * Generalisation of requireAdmin: requires a valid Clerk session AND a User
+ * document whose role is one of `roles`. Like requireAdmin, the role is
+ * always read from our own DB - never from the request.
+ */
+export const requireRole = (...roles) => async (req, res, next) => {
+  try {
+    const { userId } = getAuth(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const user = await User.findOne({ clerkId: userId });
+
+    if (!user || !roles.includes(user.role)) {
+      return res.status(403).json({ message: 'You do not have permission to perform this action' });
+    }
+
+    req.clerkId = userId;
+    req.dbUser = user;
+    next();
+  } catch (error) {
+    res.status(500).json({ message: 'Error verifying access', error: error.message });
+  }
+};
+
+// Election Officer only (proposing elections, recommending publication).
+export const requireOfficer = requireRole('officer');
+
+// Election Officer or Admin (read-only election monitoring).
+export const requireStaff = requireRole('officer', 'admin');
+
+/**
  * Requires a valid Clerk session AND (for non-admins) a completed voter
  * registry + OTP verification - see controllers/voterController.js and
  * routes/voter.js for that flow. This is what the voting routes actually

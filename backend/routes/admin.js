@@ -6,12 +6,34 @@ import {
   removeCandidateFromElection, 
   startElection, 
   endElection,
+  scheduleElection,
+  getUsers,
+  updateUserRole,
   getApplications,
   getAdminApplicationById,
   approveApplication,
   rejectApplication
 } from '../controllers/adminController.js';
 import { getLiveResults } from '../controllers/votingController.js';
+import {
+  getProposals,
+  getProposalById,
+  approveProposal,
+  rejectProposal,
+  requestProposalRevision,
+} from '../controllers/proposalController.js';
+import {
+  getComplaints,
+  getComplaintById,
+  updateComplaint,
+} from '../controllers/complaintController.js';
+import {
+  getMonitoredElections,
+  getFinalResultsForReview,
+  publishResults,
+  getResultEmailStatus,
+  retryResultEmails,
+} from '../controllers/resultPublicationController.js';
 import { requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -39,6 +61,37 @@ router.put('/elections/:electionId/start', startElection);
 
 // End an election
 router.put('/elections/:electionId/end', endElection);
+
+// Schedule a draft election (DRAFT -> UPCOMING)
+router.put('/elections/:electionId/schedule', scheduleElection);
+
+// Monitoring overview (status + turnout, incl. drafts)
+router.get('/elections-overview', getMonitoredElections);
+
+// --- Result publication (admin is the only publishing authority) ---
+// Review final aggregate results (after voting has closed)
+router.get('/elections/:electionId/final-results', getFinalResultsForReview);
+// Officially publish -> public results + result emails to voters who voted
+router.post('/elections/:electionId/publish-results', publishResults);
+// Result email delivery status / retry failed deliveries
+router.get('/elections/:electionId/result-emails', getResultEmailStatus);
+router.post('/elections/:electionId/result-emails/retry', retryResultEmails);
+
+// --- Election proposals from Election Officers ---
+router.get('/proposals', getProposals);
+router.get('/proposals/:proposalId', getProposalById);
+router.post('/proposals/:proposalId/approve', approveProposal);
+router.post('/proposals/:proposalId/reject', rejectProposal);
+router.post('/proposals/:proposalId/request-revision', requestProposalRevision);
+
+// --- Voter complaints / compliance issues (admin-only) ---
+router.get('/complaints', getComplaints);
+router.get('/complaints/:complaintId', getComplaintById);
+router.put('/complaints/:complaintId', updateComplaint);
+
+// --- Users / Election Officer appointment ---
+router.get('/users', getUsers);
+router.put('/users/:userId/role', updateUserRole);
 
 // Live vote tallies for an election that hasn't closed yet - admin only.
 // (Public results stay locked until status === 'completed', see

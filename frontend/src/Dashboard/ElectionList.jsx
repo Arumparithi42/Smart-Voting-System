@@ -42,6 +42,17 @@ const ElectionList = ({ isAdmin }) => {
     }
   };
 
+  // DRAFT -> UPCOMING (admin only; enforced by the backend)
+  const handleScheduleElection = async (electionId) => {
+    try {
+      await axiosInstance.put(`/api/admin/elections/${electionId}/schedule`);
+      toast.success("Election scheduled");
+      setRefresh(!refresh);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Error scheduling election");
+    }
+  };
+
   // Function to handle stopping the election
   const handleStopElection = async (electionId) => {
     try {
@@ -77,9 +88,33 @@ const ElectionList = ({ isAdmin }) => {
                 className="bg-gradient-to-br from-blue-100 to-teal-100 rounded-lg shadow-md overflow-hidden border border-blue-200 hover:shadow-lg transition-shadow duration-300"
               >
                 <div className="p-6 bg-white bg-opacity-60 backdrop-blur-sm">
-                  <h2 className="text-xl font-bold">{election.title}</h2>
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="text-xl font-bold">{election.title}</h2>
+                    {election.lifecycleStage && (
+                      <span className="text-xs font-semibold bg-white rounded-full px-2 py-1 whitespace-nowrap">
+                        {election.lifecycleStage.replace('_', ' ')}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-600">{election.description}</p>
                   <div className="mt-4 flex justify-between">
+                    {election.effectiveStatus === "draft" && isAdmin && (
+                      <>
+                        <Link
+                          to={`/elections/${election._id}`}
+                          className="text-white bg-orange-400 flex justify-center items-center rounded-md p-2"
+                        >
+                          Edit Candidates
+                        </Link>
+                        <button
+                          onClick={() => handleScheduleElection(election._id)}
+                          className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                        >
+                          Schedule
+                        </button>
+                      </>
+                    )}
+
                     {election.effectiveStatus === "upcoming" && isAdmin && (
                       <>
                         <Link
@@ -122,13 +157,26 @@ const ElectionList = ({ isAdmin }) => {
                       </div>
                     )}
 
-                    {election.effectiveStatus === "completed" && (
+                    {election.effectiveStatus === "completed" && isAdmin && (
                       <Link
-                        to={`/result/${election._id}`}
+                        to={`/dashboard/admin/results/${election._id}`}
                         className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
                       >
-                        View Results
+                        {election.resultsPublished ? "Results & Emails" : "Review & Publish Results"}
                       </Link>
+                    )}
+
+                    {election.effectiveStatus === "completed" && !isAdmin && (
+                      election.resultsPublished ? (
+                        <Link
+                          to={`/result/${election._id}`}
+                          className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                        >
+                          View Results
+                        </Link>
+                      ) : (
+                        <span className="text-gray-500 py-2">Results not yet published</span>
+                      )
                     )}
                   </div>
                 </div>

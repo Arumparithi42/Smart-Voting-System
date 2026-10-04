@@ -7,7 +7,11 @@ const userSchema = new mongoose.Schema(
         firstName: { type: String, required: true },
         lastName: { type: String },
         profileUrl: { type: String },
-        role: { type: String, enum: ['user', 'admin'], default: 'user' },
+        // 'officer' = Election Officer: can propose elections to an admin and
+        // monitor approved ones, but never creates official elections or
+        // publishes results itself. Roles are only ever changed server-side
+        // (see adminController.updateUserRole) - never from a client body.
+        role: { type: String, enum: ['user', 'officer', 'admin'], default: 'user' },
     },
     { timestamps: true } 
 );

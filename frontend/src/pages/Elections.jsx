@@ -262,12 +262,16 @@ export default function Component() {
                         </span>
                       </div>
                       <p className="text-gray-600 mb-6">{election.description}</p>
-                      <Link
-                        to={`/result/${election._id}`}
-                        className="bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"
-                      >
-                        Result
-                      </Link>
+                      {election.resultsPublished ? (
+                        <Link
+                          to={`/result/${election._id}`}
+                          className="bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"
+                        >
+                          Result
+                        </Link>
+                      ) : (
+                        <span className="text-gray-500">Results not yet published</span>
+                      )}
                     </div>
                   </div>
                 ))}

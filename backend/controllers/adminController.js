@@ -1,6 +1,7 @@
 import Election from '../models/Election.js'; 
 import Candidate from '../models/Candidate.js';
 import CandidateApplication from '../models/CandidateApplication.js';
+import User from '../models/User.js';
 import { sendBookingConfirmationEmail } from './sendEmail.js';
 import { getEffectiveElectionStatus } from '../utils/electionStatus.js';
 
@@ -8,7 +9,7 @@ import { getEffectiveElectionStatus } from '../utils/electionStatus.js';
 // Create an election
 export const createElection = async (req, res) => {
   try {
-    const { title, description, startTime, endTime } = req.body;
+    const { title, description, purpose, category, startTime, endTime } = req.body;
     
     if (!startTime || !endTime) {
       return res.status(400).json({ message: 'startTime and endTime are required' });
@@ -28,6 +29,9 @@ export const createElection = async (req, res) => {
     const newElection = new Election({
       title,
       description,
+      purpose,
+      category,
+      createdBy: req.dbUser._id,
       status: 'upcoming',
       startTime: start,
       endTime: end,
@@ -50,7 +54,7 @@ export const deleteElection = async (req, res) => {
     if (!election) return res.status(404).json({ message: 'Election not found' });
     
     const effectiveStatus = getEffectiveElectionStatus(election);
-    if (effectiveStatus !== 'upcoming') {
+    if (!['draft', 'upcoming'].includes(effectiveStatus)) {
       return res.status(400).json({ message: 'Cannot delete an election after it has started.' });
     }
 
@@ -76,7 +80,7 @@ export const addCandidateToElection = async (req, res) => {
       if (!election) return res.status(404).json({ message: 'Election not found' });
       
       const effectiveStatus = getEffectiveElectionStatus(election);
-      if (effectiveStatus !== 'upcoming') {
+      if (!['draft', 'upcoming'].includes(effectiveStatus)) {
         return res.status(400).json({ message: 'Candidates cannot be modified after the election has started.' });
       }
   
@@ -99,7 +103,7 @@ export const removeCandidateFromElection = async (req, res) => {
       if (!election) return res.status(404).json({ message: 'Election not found' });
   
       const effectiveStatus = getEffectiveElectionStatus(election);
-      if (effectiveStatus !== 'upcoming') {
+      if (!['draft', 'upcoming'].includes(effectiveStatus)) {
         return res.status(400).json({ message: 'Candidates cannot be modified after the election has started.' });
       }
 
@@ -154,6 +158,87 @@ export const endElection = async (req, res) => {
     res.status(200).json({ message: 'Election ended', election });
   } catch (error) {
     res.status(500).json({ message: 'Error ending election', error: error.message });
+  }
+};
+
+
+// Schedule a DRAFT election (e.g. one created from a proposal with
+// createAsDraft): DRAFT -> UPCOMING. From then on its start/end times drive
+// UPCOMING -> ONGOING -> ENDED automatically.
+export const scheduleElection = async (req, res) => {
+  try {
+    const { electionId } = req.params;
+    const election = await Election.findById(electionId);
+    if (!election) return res.status(404).json({ message: 'Election not found' });
+
+    if (election.status !== 'draft') {
+      return res.status(400).json({ message: 'Only draft elections can be scheduled.' });
+    }
+    if (!election.startTime || !election.endTime || election.endTime <= new Date()) {
+      return res.status(400).json({ message: 'This draft has no valid future end time. Recreate it with valid dates.' });
+    }
+
+    const updated = await Election.findOneAndUpdate(
+      { _id: electionId, status: 'draft' },
+      { $set: { status: 'upcoming' } },
+      { new: true }
+    );
+    if (!updated) return res.status(409).json({ message: 'Election was already scheduled.' });
+
+    res.status(200).json({ message: 'Election scheduled', election: updated });
+  } catch (error) {
+    res.status(500).json({ message: 'Error scheduling election', error: error.message });
+  }
+};
+
+
+// ========== USER / OFFICER MANAGEMENT ==========
+
+export const getUsers = async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.role) filter.role = String(req.query.role);
+    const users = await User.find(filter)
+      .select('clerkId email firstName lastName role createdAt')
+      .sort({ role: 1, createdAt: -1 })
+      .limit(1000);
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching users', error: error.message });
+  }
+};
+
+// Appoint / remove Election Officers. Deliberately limited to the
+// 'user' <-> 'officer' roles: admin accounts can't be created or demoted
+// through the API (that stays a direct DB operation, as before).
+export const updateUserRole = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    if (!/^[a-f\d]{24}$/i.test(userId)) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!['user', 'officer'].includes(role)) {
+      return res.status(400).json({ message: "Role must be 'user' or 'officer'." });
+    }
+
+    const updated = await User.findOneAndUpdate(
+      { _id: userId, role: { $ne: 'admin' } },
+      { $set: { role } },
+      { new: true }
+    ).select('clerkId email firstName lastName role');
+
+    if (!updated) {
+      const exists = await User.exists({ _id: userId });
+      return exists
+        ? res.status(403).json({ message: 'Admin accounts cannot be changed here.' })
+        : res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({ message: `Role updated to ${role}.`, user: updated });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating role', error: error.message });
   }
 };
 

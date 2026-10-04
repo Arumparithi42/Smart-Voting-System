@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { clerkMiddleware } from '@clerk/express';
+import { pathToFileURL } from 'url';
 
 // Initialize dotenv to access environment variables
 dotenv.config();
@@ -53,6 +54,8 @@ import adminRoutes from './routes/admin.js';
 import votingRoutes from './routes/voting.js';
 import voterRoutes from './routes/voter.js';
 import applicationRoutes from './routes/applications.js';
+import officerRoutes from './routes/officer.js';
+import complaintRoutes from './routes/complaints.js';
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -60,11 +63,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api',votingRoutes);
 app.use('/api/voter', voterRoutes);
 app.use('/api/applications', applicationRoutes);
-
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((error) => console.log("MongoDB connection error:", error));
+app.use('/api/officer', officerRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 // Base route
 app.get('/', (req, res) => {
@@ -79,6 +79,17 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ message: err.message || 'Server error' });
 });
 
-// Start the server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+export default app;
+
+// Connect + listen only when run directly (`node app.js` / `npm start`), so
+// tests can import the configured app without starting a server.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  // MongoDB connection
+  mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log("MongoDB connected"))
+    .catch((error) => console.log("MongoDB connection error:", error));
+
+  // Start the server
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}

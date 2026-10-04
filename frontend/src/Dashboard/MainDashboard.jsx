@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Avatar } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
-const MainDashBoard = ({isAdmin}) => {
+const MainDashBoard = ({isAdmin, role}) => {
   const { user } = useUser();
   const navigate = useNavigate();
   if (!user) {
@@ -19,6 +19,13 @@ const MainDashBoard = ({isAdmin}) => {
 
   if (isAdmin) {
     quickActions.push({ title: "Live Elections", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", route: "/elections" });
+    quickActions.push({ title: "Election Proposals", icon: "M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-7-3-7 3V6a2 2 0 012-2z", route: "/dashboard/admin/proposals" });
+    quickActions.push({ title: "Complaints", icon: "M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z", route: "/dashboard/admin/complaints" });
+  } else if (role === 'officer') {
+    quickActions.push({ title: "Propose Election", icon: "M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-7-3-7 3V6a2 2 0 012-2z", route: "/dashboard/officer/proposals" });
+    quickActions.push({ title: "Monitor Elections", icon: "M9 19V6l12-3v13M9 19l-7 3V9l7-3", route: "/dashboard/officer/elections" });
+  } else {
+    quickActions.push({ title: "Raise Complaint", icon: "M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z", route: "/dashboard/complaints" });
   }
 
   return (
@@ -46,7 +53,7 @@ const MainDashBoard = ({isAdmin}) => {
 
         {/* Quick Actions */}
         <h2 className="mb-4 text-xl font-semibold text-gray-700">Quick Actions</h2>
-        <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} mb-8`}>
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-8">
           {quickActions.map((action, index) => (
             <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between mb-4">

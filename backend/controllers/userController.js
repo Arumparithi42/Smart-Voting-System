@@ -12,11 +12,9 @@ export const checkAdminStatus = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (user.role === 'admin') {
-      return res.status(200).json({ isAdmin: true });
-    } else {
-      return res.status(200).json({ isAdmin: false });
-    }
+    // `role` lets the UI show the right dashboard (user / officer / admin).
+    // It's display-only: every protected route re-checks the role itself.
+    return res.status(200).json({ isAdmin: user.role === 'admin', role: user.role });
   } catch (error) {
     console.error('Error checking admin status:', error);
     res.status(500).json({ error: 'Server error' });

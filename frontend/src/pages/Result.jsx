@@ -14,6 +14,7 @@ export default function Component() {
   const [turnout, setTurnout] = useState(null);
   const [winnerData, setWinnerData] = useState(null);
   const [isTie, setIsTie] = useState(false);
+  const [error, setError] = useState('');
   const { electionId } = useParams()
 
   useEffect(() => {
@@ -40,6 +41,8 @@ export default function Component() {
         setCandidates(fetchedCandidates);
       } catch (error) {
         console.error('Error fetching election data:', error);
+        // 403 = ended but not yet officially published; 400 = still open.
+        setError(error.response?.data?.message || 'Could not load results');
       }
     };
     fetchElections();
@@ -81,6 +84,17 @@ export default function Component() {
     }
   }
 
+    if (error) {
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12 flex items-center justify-center px-4">
+          <div className="bg-white shadow-lg rounded-xl p-8 text-center max-w-md">
+            <h1 className="text-2xl font-bold text-blue-900 mb-2">Results unavailable</h1>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 from-yellow-100 via-yellow-100 to-white">
@@ -101,7 +115,7 @@ export default function Component() {
             <div className="space-y-6">
               {candidates.map((candidate, index) => (
                 <motion.div
-                  key={candidate.id}
+                  key={candidate.candidateId}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -117,14 +131,14 @@ export default function Component() {
                       <div className="flex items-center justify-between">
                         <h3 className="font-bold text-xl text-blue-900">{candidate.name}</h3>
                         <span className={`${getBarColor(candidate.votes, totalVotes)} text-white  text-lg p-3 rounded-full font-semibold shadow`}>
-                          {(candidate.votes.toLocaleString() / totalVotes.toLocaleString() * 100)}%
+                          {(candidate.percentage ?? 0).toFixed(1)}%
                         </span>
                       </div>
-                      <p className="text-gray-600 font-medium">{candidate.party}</p>
+                      <p className="text-gray-600 font-medium">{candidate.partyName}</p>
                       <p className="font-mono text-blue-700 text-lg">{candidate.votes.toLocaleString()} votes</p>
                     </div>
                   </div>
-                  <div className={`h-2 ${getBarColor(candidate.votes, totalVotes)}`} style={{ width: `${(candidate.votes.toLocaleString() / totalVotes.toLocaleString() * 100)}%` }}></div>
+                  <div className={`h-2 ${getBarColor(candidate.votes, totalVotes)}`} style={{ width: `${candidate.percentage ?? 0}%` }}></div>
                 </motion.div>
               ))}
             </div>
