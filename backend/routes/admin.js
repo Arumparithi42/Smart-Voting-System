@@ -7,6 +7,7 @@ import {
   startElection, 
   endElection,
   scheduleElection,
+  getDashboardSummary,
   getUsers,
   updateUserRole,
   getApplications,
@@ -61,6 +62,9 @@ router.put('/elections/:electionId/start', startElection);
 
 // End an election
 router.put('/elections/:electionId/end', endElection);
+
+// Dashboard card counts
+router.get('/dashboard-summary', getDashboardSummary);
 
 // Schedule a draft election (DRAFT -> UPCOMING)
 router.put('/elections/:electionId/schedule', scheduleElection);

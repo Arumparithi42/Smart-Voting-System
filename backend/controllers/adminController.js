@@ -2,6 +2,10 @@ import Election from '../models/Election.js';
 import Candidate from '../models/Candidate.js';
 import CandidateApplication from '../models/CandidateApplication.js';
 import User from '../models/User.js';
+import ElectionProposal from '../models/ElectionProposal.js';
+import Complaint from '../models/Complaint.js';
+import ResultEmailDelivery from '../models/ResultEmailDelivery.js';
+import { getElectionLifecycleStage } from '../utils/electionStatus.js';
 import { sendBookingConfirmationEmail } from './sendEmail.js';
 import { getEffectiveElectionStatus } from '../utils/electionStatus.js';
 
@@ -65,29 +69,49 @@ export const deleteElection = async (req, res) => {
   }
 };
 
-// Add candidate to an election
+// Add candidate to an election (admins, and officers via routes/officer.js).
+// Only before voting starts; only name/party/about are read from the body,
+// so a candidate can never be created with a vote count.
 export const addCandidateToElection = async (req, res) => {
     try {
       const { electionId } = req.params;
-      const { name, partyName } = req.body; // Get candidate details from the request body
-  
-      // Step 1: Create a new candidate
-      const newCandidate = new Candidate({ name, partyName });
-      await newCandidate.save();
-  
-      // Step 2: Find the election and add the candidate's ID to its candidates array
+      const name = typeof req.body.name === 'string' ? req.body.name.trim().slice(0, 200) : '';
+      const partyName = typeof req.body.partyName === 'string' ? req.body.partyName.trim().slice(0, 200) : undefined;
+      const aboutInput = req.body.about ?? req.body.description;
+      const about = typeof aboutInput === 'string' ? aboutInput.trim().slice(0, 2000) : undefined;
+      if (!name) return res.status(400).json({ message: 'Candidate name is required' });
+
+      // Check the election BEFORE creating anything, so a rejected request
+      // never leaves an orphaned candidate behind.
       const election = await Election.findById(electionId);
       if (!election) return res.status(404).json({ message: 'Election not found' });
-      
+
       const effectiveStatus = getEffectiveElectionStatus(election);
       if (!['draft', 'upcoming'].includes(effectiveStatus)) {
         return res.status(400).json({ message: 'Candidates cannot be modified after the election has started.' });
       }
-  
-      election.candidates.push(newCandidate._id); // Add candidate ID to the election
-      await election.save();
-  
-      res.status(200).json({ message: 'Candidate created and added to election', election });
+
+      const newCandidate = await Candidate.create({ name, partyName, about, votes: 0 });
+
+      // Conditional push: re-checks "not started" atomically.
+      const updated = await Election.findOneAndUpdate(
+        {
+          _id: electionId,
+          $or: [
+            { status: 'draft' },
+            { startTime: { $gt: new Date() } },
+            { startTime: { $exists: false }, status: 'upcoming' }, // legacy elections without times
+          ],
+        },
+        { $push: { candidates: newCandidate._id } },
+        { new: true }
+      );
+      if (!updated) {
+        await Candidate.deleteOne({ _id: newCandidate._id });
+        return res.status(400).json({ message: 'Candidates cannot be modified after the election has started.' });
+      }
+
+      res.status(200).json({ message: 'Candidate created and added to election', election: updated, candidate: newCandidate });
     } catch (error) {
       res.status(500).json({ message: 'Error adding candidate to election', error: error.message });
     }
@@ -107,11 +131,25 @@ export const removeCandidateFromElection = async (req, res) => {
         return res.status(400).json({ message: 'Candidates cannot be modified after the election has started.' });
       }
 
-      // Step 2: Remove candidate from the election's candidates array
-      election.candidates = election.candidates.filter(id => id.toString() !== candidateId); // Remove candidate by ID
-      await election.save();
+      // Step 2: Remove candidate - conditional on voting still not having
+      // started, so a removal can never land mid-election.
+      const updated = await Election.findOneAndUpdate(
+        {
+          _id: electionId,
+          $or: [
+            { status: 'draft' },
+            { startTime: { $gt: new Date() } },
+            { startTime: { $exists: false }, status: 'upcoming' },
+          ],
+        },
+        { $pull: { candidates: candidateId } },
+        { new: true }
+      );
+      if (!updated) {
+        return res.status(400).json({ message: 'Candidates cannot be modified after the election has started.' });
+      }
   
-      res.status(200).json({ message: 'Candidate removed from election', election });
+      res.status(200).json({ message: 'Candidate removed from election', election: updated });
     } catch (error) {
       res.status(500).json({ message: 'Error removing candidate from election', error: error.message });
     }
@@ -188,6 +226,32 @@ export const scheduleElection = async (req, res) => {
     res.status(200).json({ message: 'Election scheduled', election: updated });
   } catch (error) {
     res.status(500).json({ message: 'Error scheduling election', error: error.message });
+  }
+};
+
+
+// Counts for the admin dashboard cards.
+export const getDashboardSummary = async (req, res) => {
+  try {
+    const [pendingProposals, openComplaints, failedResultEmails, elections] = await Promise.all([
+      ElectionProposal.countDocuments({ status: 'PENDING' }),
+      Complaint.countDocuments({ status: { $in: ['OPEN', 'UNDER_REVIEW'] } }),
+      ResultEmailDelivery.countDocuments({ status: 'FAILED' }),
+      Election.find().select('status startTime endTime resultsPublished'),
+    ]);
+    const stages = { DRAFT: 0, UPCOMING: 0, ONGOING: 0, ENDED: 0, RESULTS_PUBLISHED: 0 };
+    for (const e of elections) stages[getElectionLifecycleStage(e)] += 1;
+
+    res.status(200).json({
+      pendingProposals,
+      openComplaints,
+      failedResultEmails,
+      elections: stages,
+      // Ended elections whose results still need official publication.
+      resultsPending: stages.ENDED,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error loading dashboard summary', error: error.message });
   }
 };
 

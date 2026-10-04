@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema(
         firstName: { type: String, required: true },
         lastName: { type: String },
         profileUrl: { type: String },
+        // Optional, user-editable "about me" line (see profileController).
+        bio: { type: String, maxlength: 300 },
         // 'officer' = Election Officer: can propose elections to an admin and
         // monitor approved ones, but never creates official elections or
         // publishes results itself. Roles are only ever changed server-side

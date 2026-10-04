@@ -10,7 +10,9 @@ import {
   getFinalResultsForReview,
   recommendPublication,
 } from '../controllers/resultPublicationController.js';
-import { requireOfficer } from '../middleware/auth.js';
+import { getOfficerElection, getOfficerElectionAnalytics } from '../controllers/officerController.js';
+import { addCandidateToElection, removeCandidateFromElection } from '../controllers/adminController.js';
+import { requireElectionOfficer } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -18,7 +20,7 @@ const router = express.Router();
 // Nothing here creates an official election, changes election status,
 // touches vote counts, publishes results, reads voter registry data
 // (Aadhaar etc.) or reads complaints.
-router.use(requireOfficer);
+router.use(requireElectionOfficer);
 
 // Propose elections to the admin
 router.post('/proposals', createProposal);
@@ -28,6 +30,15 @@ router.put('/proposals/:proposalId', updateMyProposal);
 
 // Monitor approved elections (status + turnout; no live per-candidate tallies)
 router.get('/elections', getMonitoredElections);
+router.get('/elections/:electionId', getOfficerElection);
+router.get('/elections/:electionId/analytics', getOfficerElectionAnalytics);
+
+// Candidate management on approved elections - only while DRAFT/UPCOMING
+// (the handlers refuse once voting has started). New candidates always
+// start at 0 votes; no route lets an officer touch vote counts.
+router.post('/elections/:electionId/candidates', addCandidateToElection);
+router.delete('/elections/:electionId/candidates/:candidateId', removeCandidateFromElection);
+
 // Review final aggregate results once voting has closed
 router.get('/elections/:electionId/final-results', getFinalResultsForReview);
 // Advise the admin that results are ready to publish

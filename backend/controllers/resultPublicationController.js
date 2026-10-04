@@ -9,6 +9,7 @@ import {
   dispatchResultEmails,
   getResultEmailStats,
 } from '../services/resultEmailService.js';
+import { notifyResultsPublished } from '../services/notificationService.js';
 
 const loadElection = async (req, res) => {
   const { electionId } = req.params;
@@ -152,6 +153,11 @@ export const publishResults = async (req, res) => {
     }
 
     const recipients = await queueResultEmails(published);
+
+    // In-app "Results Published" notification (idempotent per user).
+    await notifyResultsPublished(published).catch((error) => {
+      console.error(`Results notification failed for election ${published._id}:`, error.message);
+    });
 
     // Sending happens in the background so publishing doesn't wait on
     // hundreds of SMTP round-trips. Failures are recorded per delivery row

@@ -5,9 +5,11 @@ const buckets = new Map();
 // multi-instance production deployment would want a shared store (e.g.
 // Redis) instead, since this resets on process restart and isn't shared
 // across instances.
-export function simpleRateLimit({ windowMs, max, keyPrefix }) {
+// `keyBy` (optional) picks the bucket key - e.g. the signed-in user, so
+// many students behind one campus IP don't share a single limit.
+export function simpleRateLimit({ windowMs, max, keyPrefix, keyBy }) {
   return (req, res, next) => {
-    const key = `${keyPrefix}:${req.ip}`;
+    const key = `${keyPrefix}:${(keyBy && keyBy(req)) || req.ip}`;
     const now = Date.now();
     const bucket = buckets.get(key);
 

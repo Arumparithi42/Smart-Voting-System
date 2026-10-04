@@ -74,6 +74,7 @@ export const requireRole = (...roles) => async (req, res, next) => {
 
 // Election Officer only (proposing elections, recommending publication).
 export const requireOfficer = requireRole('officer');
+export const requireElectionOfficer = requireOfficer;
 
 // Election Officer or Admin (read-only election monitoring).
 export const requireStaff = requireRole('officer', 'admin');

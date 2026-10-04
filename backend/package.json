@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "Smart Voting System Server",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@clerk/express": "^2.1.66",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

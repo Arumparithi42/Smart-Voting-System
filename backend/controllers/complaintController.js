@@ -7,6 +7,7 @@ import Complaint, {
 import Election from '../models/Election.js';
 import User from '../models/User.js';
 import { nextComplaintReference } from '../utils/counter.js';
+import { notifyComplaintUpdated } from '../services/notificationService.js';
 
 const str = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : undefined);
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -221,6 +222,11 @@ export const updateComplaint = async (req, res) => {
     if (!updated) {
       return res.status(409).json({ message: 'This complaint was closed by another admin. Please reload.' });
     }
+
+    // Tell the complainant (only them) that their complaint changed.
+    await notifyComplaintUpdated(updated).catch((error) => {
+      console.error(`Complaint notification failed for ${updated.referenceId}:`, error.message);
+    });
 
     const [withComplainant] = await attachComplainants([updated]);
     res.status(200).json({ message: 'Complaint updated.', complaint: withComplainant });

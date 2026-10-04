@@ -45,6 +45,11 @@ const electionSchema = new mongoose.Schema(
     // ResultEmailDelivery, not here.
     resultEmailsQueuedAt: { type: Date },
 
+    // Reminder stages already fanned out to users (e.g. "starting-24h").
+    // A fast-path skip only - Notification's unique index is what actually
+    // guarantees no duplicates.
+    notificationStagesSent: [{ type: String }],
+
     // An Election Officer's advice that the final results are ready to be
     // published. Advisory only - publication itself is admin-only.
     publicationRecommendation: {

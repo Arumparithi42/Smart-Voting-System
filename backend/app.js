@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { clerkMiddleware } from '@clerk/express';
 import { pathToFileURL } from 'url';
+import { sanitizeInput } from './middleware/sanitize.js';
 
 // Initialize dotenv to access environment variables
 dotenv.config();
@@ -35,13 +36,25 @@ app.use(cors({
       callback(corsError);
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  // Lets the frontend read the server clock for countdown display.
+  exposedHeaders: ['X-Server-Time']
 }));
 
-// Middleware for parsing JSON
-app.use(express.json());
+// Middleware for parsing JSON (bounded, so huge bodies are rejected early)
+app.use(express.json({ limit: '100kb' }));
+
+// Strip "$operator" / dotted keys from all client input (NoSQL injection).
+app.use(sanitizeInput);
+
+// The server/database clock is the source of truth for election timing;
+// the frontend uses this only to correct its countdown display.
+app.use((req, res, next) => {
+  res.setHeader('X-Server-Time', new Date().toISOString());
+  next();
+});
 
 // Attaches Clerk auth info (if a valid session token is present) to every
 // request as req.auth / usable via getAuth(req). Individual routes still
@@ -56,6 +69,10 @@ import voterRoutes from './routes/voter.js';
 import applicationRoutes from './routes/applications.js';
 import officerRoutes from './routes/officer.js';
 import complaintRoutes from './routes/complaints.js';
+import notificationRoutes from './routes/notifications.js';
+import profileRoutes from './routes/profile.js';
+import chatbotRoutes from './routes/chatbot.js';
+import { startNotificationScheduler } from './services/notificationService.js';
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -65,6 +82,9 @@ app.use('/api/voter', voterRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/officer', officerRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 // Base route
 app.get('/', (req, res) => {
@@ -86,7 +106,11 @@ export default app;
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   // MongoDB connection
   mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDB connected"))
+    .then(() => {
+      console.log("MongoDB connected");
+      // Election reminders run server-side, independent of any browser.
+      startNotificationScheduler();
+    })
     .catch((error) => console.log("MongoDB connection error:", error));
 
   // Start the server
