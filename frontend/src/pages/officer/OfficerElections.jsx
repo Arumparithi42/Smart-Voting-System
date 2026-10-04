@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../utils/axiosInstance';
-import { LIFECYCLE_STYLES, formatDateTime } from '../../utils/labels';
-import StatusBadge from '../../components/StatusBadge';
+import { formatDateTime } from '../../utils/labels';
+import ElectionStatusBadge from '../../components/ui/ElectionStatusBadge';
+import PageHeader from '../../components/ui/PageHeader';
 
 // Election Officer: monitor official (admin-approved) elections. Status and
 // turnout only while voting is open; final aggregate results once it ends.
@@ -20,12 +21,9 @@ export default function OfficerElections() {
   }, []);
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-6xl mx-auto">
-        <div className="bg-gradient-to-r from-blue-500 to-teal-400 text-white rounded-lg shadow-lg p-8 mb-8">
-          <h1 className="text-3xl font-bold">Monitor Elections</h1>
-          <p className="mt-2 text-blue-100">Status and turnout of official elections. Results can be reviewed once voting closes.</p>
-        </div>
+        <PageHeader title={<>Monitor Elections</>} subtitle={<>Status and turnout of official elections. Results can be reviewed once voting closes.</>} />
 
         {loading ? (
           <p>Loading…</p>
@@ -37,7 +35,7 @@ export default function OfficerElections() {
               <div key={e._id} className="bg-white rounded-lg shadow p-5">
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="text-lg font-semibold">{e.title}</h2>
-                  <StatusBadge value={e.lifecycleStage} styles={LIFECYCLE_STYLES} />
+                  <ElectionStatusBadge stage={e.lifecycleStage} />
                 </div>
                 <p className="text-sm text-gray-600 mt-1">{formatDateTime(e.startTime)} → {formatDateTime(e.endTime)}</p>
                 <div className="mt-3 text-sm text-gray-700">

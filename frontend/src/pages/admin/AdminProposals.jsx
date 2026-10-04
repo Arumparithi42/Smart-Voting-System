@@ -3,13 +3,18 @@ import { toast } from 'react-toastify';
 import axiosInstance from '../../utils/axiosInstance';
 import { PROPOSAL_STATUS_STYLES, humanize, toDateTimeLocal, formatDateTime } from '../../utils/labels';
 import StatusBadge from '../../components/StatusBadge';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { ErrorState, LoadingState } from '../../components/ui/States';
+import PageHeader from '../../components/ui/PageHeader';
 
 const FILTERS = ['PENDING', 'REVISION_REQUESTED', 'APPROVED', 'REJECTED', 'ALL'];
 
 // Admin: review Election Officer proposals. "Approve & Create Election" is
 // the only way a proposal becomes an official election.
 export default function AdminProposals() {
+  const confirm = useConfirm();
   const [filter, setFilter] = useState('PENDING');
+  const [loadState, setLoadState] = useState('loading');
   const [proposals, setProposals] = useState([]);
   const [selected, setSelected] = useState(null);
   const [draft, setDraft] = useState(null); // editable approval details
@@ -20,8 +25,10 @@ export default function AdminProposals() {
     try {
       const res = await axiosInstance.get(`/api/admin/proposals${filter === 'ALL' ? '' : `?status=${filter}`}`);
       setProposals(res.data);
+      setLoadState('ready');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Could not load proposals');
+      setLoadState('error');
     }
   }, [filter]);
 
@@ -57,8 +64,12 @@ export default function AdminProposals() {
     }
   };
 
-  const approve = () => {
-    if (!window.confirm('Approve this proposal and create the official election?')) return;
+  const approve = async () => {
+    if (!(await confirm({
+      title: 'Approve & create election?',
+      message: `Approving creates the official election "${draft.title}"${draft.createAsDraft ? ' as a draft' : ' and schedules it'}.`,
+      confirmLabel: 'Approve & Create Election',
+    }))) return;
     act(() => axiosInstance.post(`/api/admin/proposals/${selected._id}/approve`, {
       title: draft.title,
       description: draft.description,
@@ -70,8 +81,9 @@ export default function AdminProposals() {
     }));
   };
 
-  const reject = () => {
+  const reject = async () => {
     if (!feedback.trim()) return toast.error('Please give a reason for rejection.');
+    if (!(await confirm({ title: 'Reject this proposal?', message: 'The officer will see your reason. Rejected proposals cannot be reopened.', confirmLabel: 'Reject', tone: 'danger' }))) return;
     act(() => axiosInstance.post(`/api/admin/proposals/${selected._id}/reject`, { reason: feedback }));
   };
 
@@ -86,9 +98,9 @@ export default function AdminProposals() {
   const input = 'mt-1 px-3 py-2 w-full border border-gray-300 rounded-md';
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-[#1E3A8A] mb-6">Election Proposals</h1>
+        <PageHeader title="Election Proposals" subtitle="Review proposals from Election Officers. Only approval creates an official election." />
 
         <div className="flex flex-wrap gap-2 mb-6">
           {FILTERS.map((s) => (
@@ -102,7 +114,7 @@ export default function AdminProposals() {
           ))}
         </div>
 
-        {proposals.length === 0 ? (
+        {loadState === 'loading' ? <LoadingState /> : loadState === 'error' ? <ErrorState message="Unable to load this page." onRetry={load} /> : proposals.length === 0 ? (
           <div className="bg-white p-6 shadow rounded text-center text-gray-500">No proposals found.</div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col md:flex-row">

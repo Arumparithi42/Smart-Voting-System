@@ -48,12 +48,44 @@ Voter ──complaint──▶ Admin (respond / resolve / reject)
 * **Result emails** go only to voters in the election's participation record (`Election.voters`), never to eligible non-voters. They contain only aggregate results. Each voter has one `ResultEmailDelivery` row per election (unique index), so re-publishing or retrying never sends duplicates. Failed deliveries are recorded and an Admin can retry them.
 * **Complaints** get a reference ID like `CMP-2026-00124` and are visible only to their author and to Admins.
 
+## ✨ Features
+
+| Feature | Where | Notes |
+|---|---|---|
+| **Smart Voting Assistant (chatbot)** | Floating "Need help?" button on every signed-in page | Read-only. Answers only from public election data and the user's own account. Refuses requests for Aadhaar, OTPs, passwords, keys, other users' data or vote choices, and any action (voting, publishing, role changes). Rule-based by default; optional Claude provider. |
+| **Election countdown** | Election cards, details, vote and dashboard pages | "Election starts in / ends in DD:HH:MM:SS", then "Election Ended" / "Results Published". Uses the stored UTC times and the server clock (`X-Server-Time`), so it survives refreshes and wrong device clocks. Display only; the backend validates every vote. |
+| **Reminder notifications** | Bell icon (top bar / header), Dashboard → Notifications | Server-side scheduler: starts within 24 h, starts within 1 h, voting open, closing within 1 h (only voters who haven't voted), voting closed. Also results published and complaint updates. Never duplicated (unique per user + reminder). Includes mark read and mark all read. |
+| **Result publication + email** | Admin → Manage Elections → Review & Publish | Only voters who actually voted are emailed, with aggregate results only. Duplicate-proof, with failed-delivery retry. Ties are reported as "Result: Tie". |
+| **Election Officer** | Officer dashboard | Proposes elections, monitors approved ones (status, turnout, hourly participation), manages candidates only before voting starts, reviews final results and recommends publication. Cannot create elections, publish results or see votes. |
+| **Profile** | Dashboard → Profile | Display name, bio and photo URL are editable. Voter ID, registered email and masked phone are read-only. Aadhaar, OTPs and passwords are never returned. |
+| **Complaints** | Dashboard → My Complaints / Admin → Complaints | Go directly to the Admin with a reference ID (e.g. `CMP-2026-00124`). Visible only to the author and Admins. |
+
 ## ⚙️ Configuration
 
 See `backend/.env.example`. Email delivery is configured with `EMAIL_PROVIDER`:
 
 * `console` (default): emails are printed to the server console and nothing is sent. Use this for local development and demos.
 * `smtp`: real delivery via `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASSWORD`, `EMAIL_FROM` (works with Gmail app passwords, SendGrid, Mailgun, SES, Brevo, …).
+
+Election reminders: `NOTIFICATION_INTERVAL_MS` (default `60000`; `0` disables the scheduler).
+
+Chatbot: `CHATBOT_PROVIDER=rules` (default, no external service) or `anthropic` with `ANTHROPIC_API_KEY` (server-side only; optional `CHATBOT_MODEL`). Per-user rate limit: `CHATBOT_RATE_LIMIT_PER_MIN` (default 20).
+
+## ▶️ Running locally
+
+```bash
+# backend
+cd backend
+npm install
+cp .env.example .env      # then fill in MONGO_URI and the Clerk keys
+npm run dev               # http://localhost:5000
+
+# frontend (second terminal)
+cd frontend
+npm install
+cp .env.example .env      # VITE_BACKEND_URL and VITE_CLERK_PUBLISHABLE_KEY
+npm run dev               # http://localhost:5173
+```
 
 ## 🧪 Tests
 
@@ -62,6 +94,7 @@ The backend integration tests run against a real MongoDB instance (Clerk is stub
 ```bash
 cd backend
 MONGO_TEST_URI=mongodb://127.0.0.1:27017/svs_test npm test
+# Windows PowerShell:  $env:MONGO_TEST_URI="mongodb://127.0.0.1:27017/svs_test"; npm test
 ```
 
 The test database is dropped before and after the run.

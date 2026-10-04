@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { toast } from 'react-toastify';
+import { useConfirm } from '../components/ui/ConfirmDialog';
 
 const AdminApplications = () => {
+  const confirm = useConfirm();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
@@ -31,7 +33,7 @@ const AdminApplications = () => {
   }, [filter]);
 
   const handleApprove = async (id) => {
-    if (!window.confirm("Approve this candidate? This will immediately place them in the official election.")) return;
+    if (!(await confirm({ title: 'Approve candidate?', message: 'This immediately places them in the official election.', confirmLabel: 'Approve' }))) return;
     try {
       await axiosInstance.post(`/api/admin/candidate-applications/${id}/approve`);
       toast.success("Application approved and candidate instantiated!");
@@ -56,7 +58,7 @@ const AdminApplications = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-[#1E3A8A] mb-8">Candidate Applications Review</h1>
         

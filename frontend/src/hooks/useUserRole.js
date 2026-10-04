@@ -20,8 +20,7 @@ export default function useUserRole() {
     }
 
     let cancelled = false;
-    setLoading(true);
-    axiosInstance
+    const load = () => axiosInstance
       .post('/api/check-admin')
       .then((res) => {
         if (!cancelled) setRole(res.data.role || (res.data.isAdmin ? 'admin' : 'user'));
@@ -32,8 +31,12 @@ export default function useUserRole() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    load();
+    // Re-check after first-login registration (see DashboardLayout).
+    window.addEventListener('profile-updated', load);
     return () => {
       cancelled = true;
+      window.removeEventListener('profile-updated', load);
     };
   }, [isLoaded, isSignedIn]);
 

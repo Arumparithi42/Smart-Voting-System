@@ -1,285 +1,89 @@
-// import { useEffect, useState } from "react";
-// import Header from "../components/Header/Header";
-// import { Link } from "react-router-dom";
-// import axiosInstance from "../utils/axiosInstance";
-// export default function Component() {
-//   const [elections, setElections] = useState([]);
+import { useCallback, useEffect, useState } from 'react';
+import { useUser } from '@clerk/clerk-react';
+import { Search } from 'lucide-react';
+import axiosInstance from '../utils/axiosInstance';
+import Header from '../components/Header/Header';
+import ElectionCard from '../components/ElectionCard';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
 
-//   useEffect(() => {
-//     const fetchElections = async () => {
-//       try {
-//         const response = await axiosInstance.get("/api/elections");
-//         setElections(response.data); // Assuming response.data is an array of elections
-//       } catch (error) {
-//         console.error(error);
-//       }
-//     };
-//     fetchElections();
-//   }, []);
+const SECTIONS = [
+  { key: 'ONGOING', title: 'Voting Open', empty: 'No elections are open for voting right now.' },
+  { key: 'UPCOMING', title: 'Upcoming Elections', empty: 'No upcoming elections.' },
+  { key: 'RESULTS_PUBLISHED', title: 'Results Available', empty: 'No published results yet.' },
+  { key: 'ENDED', title: 'Voting Closed', empty: null },
+];
 
-//   const liveElections = elections.filter((election) => election.status === "ongoing");
-//   const upcomingElections = elections.filter((election) => election.status === "upcoming");
-//   const endedElections = elections.filter((election) => election.status === "completed");
-
-//   return (
-//     <div className=" from-yellow-100 via-yellow-100 to-white">
-//       <Header />
-//       <div className="min-h-screen bg-gradient-to-r from-yellow-100 via-yellow-100 to-white p-6">
-//         <div className="max-w-7xl mx-auto mt-20 ">
-//           <h1 className="text-4xl font-bold text-[#1E3A8A] mb-8">
-//             Total Elections
-//           </h1>
-
-//           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-//             {elections.map((election) => (
-//               <div
-//                 key={election.id}
-//                 className="bg-white rounded-xl shadow-lg overflow-hidden"
-//               >
-//                 <div className={`h-3 ${election.status === "ongoing" ? "bg-green-500" : election.status === "upcoming" ? "bg-yellow-500" : "bg-gray-500"}`} aria-hidden="true" />
-//                 <div className="p-6">
-//                   <div className="flex justify-between items-start mb-4">
-//                     <h3 className="text-xl font-bold text-[#1E3A8A]">
-//                       {election.title}
-//                     </h3>
-//                     <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.status === "ongoing" ? "bg-green-300" : election.status === "upcoming" ? "bg-yellow-300" : "bg-gray-300"}`}>
-//                       {election.status}
-//                     </span>
-//                   </div>
-//                   <p className="text-gray-600 mb-6">{election.description}</p>
-//                   {election.status === "upcoming" ? (
-
-//                     <Link
-//                       to={`/explore/${election._id}`}
-//                       className=" bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"
-//                     >
-//                       {election.status === "upcoming" ? "Explore" : "Vote"}
-//                     </Link>
-
-//                   ) : election.status === "ongoing" ? (
-
-//                     <Link
-//                       to={`/vote/${election._id}`}
-//                       className=" bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"
-//                     >
-//                       {election.status === "ongoing" ? "Vote" : "Explore"}
-//                     </Link>
-//                   ) : election.status === "completed" ? (
-
-//                     <Link
-//                       to={`/result/${election._id}`}
-//                       className=" bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"
-//                     >
-//                       {election.status === "completed" ? "Result" : "Explore"}
-//                     </Link>
-//                   ) : null}
-
-//                 </div>
-//               </div>
-//             ))}
-
-//             {/* Active Election */}
-
-//             {/* Upcoming Election */}
-//             {/* <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-//               <div className="h-3 bg-yellow-500" aria-hidden="true" />
-//               <div className="p-6">
-//                 <div className="flex justify-between items-start mb-4">
-//                   <h3 className="text-xl font-bold text-[#1E3A8A]">
-//                     Department Representatives
-//                   </h3>
-//                   <span className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-//                     Upcoming
-//                   </span>
-//                 </div>
-//                 <p className="text-gray-600 mb-6">
-//                   Select your department representatives for the academic year
-//                   2024-25. Voting opens in 5 days.
-//                 </p>
-//                 <button className="w-full bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors">
-//                   Explore
-//                 </button>
-//               </div>
-//             </div> */}
-
-//             {/* Ended Election */}
-//             {/* <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-//               <div className="h-3 bg-gray-500" aria-hidden="true" />
-//               <div className="p-6">
-//                 <div className="flex justify-between items-start mb-4">
-//                   <h3 className="text-xl font-bold text-[#1E3A8A]">
-//                     Sports Committee Election
-//                   </h3>
-//                   <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-//                     Ended
-//                   </span>
-//                 </div>
-//                 <p className="text-gray-600 mb-6">
-//                   The sports committee election for 2024 has concluded. Thank
-//                   you for your participation.
-//                 </p>
-//                 <Link
-//                   to="/result"
-//                   className="w-full border-2 border-[#1E3A8A] text-[#1E3A8A] py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
-//                 >
-//                   View Results
-//                 </Link>
-//               </div>
-//             </div> */}
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-import { useEffect, useState } from "react";
-import Header from "../components/Header/Header";
-import ElectionCountdown from "../components/ElectionCountdown";
-import { Link } from "react-router-dom";
-import axiosInstance from "../utils/axiosInstance";
-
-export default function Component() {
+export default function Elections() {
+  const { isSignedIn } = useUser();
   const [elections, setElections] = useState([]);
+  const [voted, setVoted] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    const fetchElections = async () => {
-      try {
-        const response = await axiosInstance.get("/api/elections");
-        setElections(response.data); // Assuming response.data is an array of elections
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchElections();
+  const load = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get('/api/elections');
+      setElections(res.data);
+      setError('');
+    } catch {
+      setError('Unable to load elections.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Separate elections by status
-  const liveElections = elections.filter((election) => election.effectiveStatus === "ongoing");
-  const upcomingElections = elections.filter((election) => election.effectiveStatus === "upcoming");
-  const endedElections = elections.filter((election) => election.effectiveStatus === "completed");
+  useEffect(() => { load(); }, [load]);
+
+  // The signed-in user's own participation in open elections.
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const open = elections.filter((e) => e.lifecycleStage === 'ONGOING');
+    Promise.all(open.map((e) => axiosInstance.get(`/api/elections/${e._id}/my-vote-status`)
+      .then((r) => [e._id, r.data.hasVoted]).catch(() => [e._id, false])))
+      .then((pairs) => setVoted(Object.fromEntries(pairs)));
+  }, [elections, isSignedIn]);
+
+  const q = query.trim().toLowerCase();
+  const visible = elections.filter((e) => !q || `${e.title} ${e.description || ''}`.toLowerCase().includes(q));
 
   return (
-    <div className="from-yellow-100 via-yellow-100 to-white">
+    <div className="app-ui min-h-screen bg-gradient-to-b from-yellow-50 to-white">
       <Header />
-      <div className="min-h-screen bg-gradient-to-r from-yellow-100 via-yellow-100 to-white p-6">
-        <div className="max-w-7xl mx-auto mt-20 flex flex-col gap-10">
-          <div className="w-full flex justify-center items-center"><h1 className="text-4xl font-extrabold text-[#1E3A8A] mb-8 ">Total Elections</h1></div>
-
-          {/* Live Elections */}
-          {liveElections.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-semibold text-green-800 mb-6">Live Elections</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {liveElections.map((election) => (
-                  <div
-                    key={election.id}
-                    className="bg-white rounded-xl shadow-lg overflow-hidden"
-                  >
-                    <div
-                      className={`h-3 ${election.effectiveStatus === "ongoing" ? "bg-green-500" : election.effectiveStatus === "upcoming" ? "bg-yellow-500" : "bg-gray-500"}`}
-                      aria-hidden="true"
-                    />
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-xl font-bold text-[#1E3A8A]">{election.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.effectiveStatus === "ongoing" ? "bg-green-300" : election.effectiveStatus === "upcoming" ? "bg-yellow-300" : "bg-gray-300"}`}>
-                          {election.effectiveStatus}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 mb-6">{election.description}</p>
-                      <ElectionCountdown
-                        endTime={election.endTime}
-                        className="text-sm font-semibold text-red-600 mb-6"
-                      />
-                      <Link
-                        to={`/vote/${election._id}`}
-                        className="bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"
-                      >
-                        Vote
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Upcoming Elections */}
-          {upcomingElections.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-semibold text-yellow-800 mb-6">Upcoming Elections</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {upcomingElections.map((election) => (
-                  <div
-                    key={election.id}
-                    className="bg-white rounded-xl shadow-lg overflow-hidden"
-                  >
-                    <div
-                      className={`h-3 ${election.effectiveStatus === "upcoming" ? "bg-yellow-500" : "bg-gray-500"}`}
-                      aria-hidden="true"
-                    />
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-xl font-bold text-[#1E3A8A]">{election.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.effectiveStatus === "upcoming" ? "bg-yellow-300" : "bg-gray-300"}`}>
-                          {election.effectiveStatus}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 mb-6">{election.description}</p>
-                      <Link
-                        to={`/explore/${election._id}`}
-                        className="bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"
-                      >
-                        Explore
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Ended Elections */}
-          {endedElections.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-800 mb-6">Ended Elections</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {endedElections.map((election) => (
-                  <div
-                    key={election.id}
-                    className="bg-white rounded-xl shadow-lg overflow-hidden"
-                  >
-                    <div
-                      className={`h-3 ${election.effectiveStatus === "completed" ? "bg-gray-500" : "bg-gray-500"}`}
-                      aria-hidden="true"
-                    />
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-xl font-bold text-[#1E3A8A]">{election.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium text-black ${election.effectiveStatus === "completed" ? "bg-gray-300" : "bg-gray-300"}`}>
-                          {election.effectiveStatus}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 mb-6">{election.description}</p>
-                      {election.resultsPublished ? (
-                        <Link
-                          to={`/result/${election._id}`}
-                          className="bg-[#1E3A8A] text-white py-2 px-4 rounded-lg hover:bg-[#2B4BA8] transition-colors"
-                        >
-                          Result
-                        </Link>
-                      ) : (
-                        <span className="text-gray-500">Results not yet published</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+      <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#1E3A8A] sm:text-4xl">Elections</h1>
+            <p className="mt-1 text-slate-600">Times shown in your local time zone. Voting is controlled by the server.</p>
+          </div>
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} type="search" placeholder="Search elections" aria-label="Search elections"
+              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+          </div>
         </div>
-      </div>
+
+        {loading ? <LoadingState label="Loading elections…" /> : error ? <ErrorState message={error} onRetry={load} /> : elections.length === 0 ? (
+          <EmptyState title="No elections yet." message="Elections appear here once the Admin schedules them." />
+        ) : (
+          <div className="space-y-10">
+            {SECTIONS.map((section) => {
+              const list = visible.filter((e) => e.lifecycleStage === section.key);
+              if (!list.length && !section.empty) return null;
+              return (
+                <section key={section.key} aria-labelledby={`sec-${section.key}`}>
+                  <h2 id={`sec-${section.key}`} className="mb-4 text-xl font-bold text-slate-900">{section.title} <span className="text-base font-medium text-slate-400">({list.length})</span></h2>
+                  {list.length ? (
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                      {list.map((e) => <ElectionCard key={e._id} election={e} hasVoted={voted[e._id]} onStageChange={load} />)}
+                    </div>
+                  ) : <p className="rounded-xl bg-white/70 p-4 text-sm text-slate-500 ring-1 ring-slate-200">{q ? 'No matching elections.' : section.empty}</p>}
+                </section>
+              );
+            })}
+          </div>
+        )}
+      </main>
     </div>
   );
 }

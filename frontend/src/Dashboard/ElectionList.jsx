@@ -1,201 +1,170 @@
-import React, { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axiosInstance from "../utils/axiosInstance";
-import { useUser } from "@clerk/clerk-react";
 import { toast } from "react-toastify";
+import { CheckCircle2, ClipboardList, PlusCircle } from "lucide-react";
+import axiosInstance from "../utils/axiosInstance";
+import PageHeader from "../components/ui/PageHeader";
+import ElectionStatusBadge from "../components/ui/ElectionStatusBadge";
+import ElectionCountdown from "../components/ElectionCountdown";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
+import { formatDateTime } from "../utils/electionStages";
 
+// Admins: manage every election (incl. drafts). Voters: their voting
+// history - elections they took part in (never which candidate).
 const ElectionList = ({ isAdmin }) => {
+  const confirm = useConfirm();
   const [elections, setElections] = useState([]);
-  const [refresh, setRefresh] = useState(false);
-  const {user} =useUser();
-  const clerkId = user?.id;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState(null);
 
-  useEffect(() => {
-    const fetchElections = async () => {
-      try {
-        const response = await axiosInstance.get("/api/elections");
-        setElections(response.data);
-        console.log(response.data);
-      } catch (error) {
-        console.error("Error fetching elections:", error);
+  const load = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get("/api/elections");
+      let list = response.data;
+      if (!isAdmin) {
+        const started = list.filter((e) => ["ONGOING", "ENDED", "RESULTS_PUBLISHED"].includes(e.lifecycleStage));
+        const statuses = await Promise.all(started.map((e) => axiosInstance
+          .get(`/api/elections/${e._id}/my-vote-status`)
+          .then((r) => (r.data.hasVoted ? { ...e, votedAt: r.data.votedAt } : null))
+          .catch(() => null)));
+        list = statuses.filter(Boolean).sort((a, b) => new Date(b.votedAt) - new Date(a.votedAt));
       }
-    };
-
-    fetchElections();
-  }, [refresh]);
-
-  
-
-  // Function to handle starting the election
-  const handleStartElection = async (electionId, candidateCount) => {
-    if (!candidateCount || candidateCount === 0) {
-      toast.error("Add at least one candidate before starting the election");
-      return;
+      setElections(list);
+      setError("");
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to load elections.");
+    } finally {
+      setLoading(false);
     }
+  }, [isAdmin]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const act = async (election, { title, message, confirmLabel, tone, request, success }) => {
+    if (!(await confirm({ title, message, confirmLabel, tone }))) return;
+    setBusyId(election._id);
     try {
-      await axiosInstance.put(`/api/admin/elections/${electionId}/start`);
-      toast.success("Election started");
-      setRefresh(!refresh);
-    } catch (error) {
-      console.error("Error starting election:", error);
-      toast.error(error?.response?.data?.message || "Error starting election");
+      await request();
+      toast.success(success);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Action failed");
+    } finally {
+      setBusyId(null);
     }
   };
 
-  // DRAFT -> UPCOMING (admin only; enforced by the backend)
-  const handleScheduleElection = async (electionId) => {
-    try {
-      await axiosInstance.put(`/api/admin/elections/${electionId}/schedule`);
-      toast.success("Election scheduled");
-      setRefresh(!refresh);
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Error scheduling election");
-    }
+  const startElection = (e) => {
+    if (!e.candidates?.length) return toast.error("Add at least one candidate before starting the election");
+    return act(e, {
+      title: "Start this election now?",
+      message: `Voting for "${e.title}" opens immediately and candidates can no longer be changed.`,
+      confirmLabel: "Start election",
+      request: () => axiosInstance.put(`/api/admin/elections/${e._id}/start`),
+      success: "Election started",
+    });
   };
+  const endElection = (e) => act(e, {
+    title: "End this election?",
+    message: `Are you sure you want to end "${e.title}"? Voting closes immediately for everyone. This cannot be undone.`,
+    confirmLabel: "End election",
+    tone: "danger",
+    request: () => axiosInstance.put(`/api/admin/elections/${e._id}/end`),
+    success: "Election ended",
+  });
+  const scheduleElection = (e) => act(e, {
+    title: "Schedule this election?",
+    message: `"${e.title}" becomes visible to voters and opens automatically at ${formatDateTime(e.startTime)}.`,
+    confirmLabel: "Schedule",
+    request: () => axiosInstance.put(`/api/admin/elections/${e._id}/schedule`),
+    success: "Election scheduled",
+  });
 
-  // Function to handle stopping the election
-  const handleStopElection = async (electionId) => {
-    try {
-      const response = await axiosInstance.put(`/api/admin/elections/${electionId}/end`);
-    
-    } catch (error) {
-      console.error("Error stopping election:", error);
-    }finally{
-      setRefresh(!refresh);
-    }
-  };
-
-   // Filter elections if isAdmin is false
-   const filteredElections = isAdmin
-   ? elections
-   : elections.filter((election) =>
-       election.voters?.some((voter) => voter.clerkId === user?.id)
-     );
+  const btn = "rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50";
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-gradient-to-r from-blue-500 to-teal-400 text-white rounded-lg shadow-lg p-8 mb-8">
-          <h1 className="text-3xl font-bold">Elections</h1>
-          <p className="mt-2 text-blue-100">List of all elections</p>
-        </div>
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:ml-64">
+      <div className="mx-auto max-w-7xl">
+        <PageHeader
+          title={isAdmin ? "Manage Elections" : "Voting History"}
+          subtitle={isAdmin ? "Official elections, from draft to published results." : "Elections you have voted in. Your choices are never stored with your account."}
+          actions={isAdmin && (
+            <Link to="/createElection" className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#1E3A8A] hover:bg-blue-50">
+              <PlusCircle className="h-4 w-4" aria-hidden="true" /> Create New Election
+            </Link>
+          )}
+        />
 
-        {filteredElections.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredElections.map((election) => (
-              <div
-                key={election._id}
-                className="bg-gradient-to-br from-blue-100 to-teal-100 rounded-lg shadow-md overflow-hidden border border-blue-200 hover:shadow-lg transition-shadow duration-300"
-              >
-                <div className="p-6 bg-white bg-opacity-60 backdrop-blur-sm">
+        {loading ? <LoadingState label="Loading elections…" /> : error ? <ErrorState message={error} onRetry={load} /> : elections.length === 0 ? (
+          <EmptyState
+            icon={ClipboardList}
+            title={isAdmin ? "No elections found." : "You haven't voted in any election yet."}
+            action={!isAdmin && <Link to="/elections" className="rounded-lg bg-[#1E3A8A] px-4 py-2 text-sm font-semibold text-white">Browse elections</Link>}
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {elections.map((election) => {
+              const stage = election.lifecycleStage;
+              const busy = busyId === election._id;
+              return (
+                <article key={election._id} className="flex flex-col rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-xl font-bold">{election.title}</h2>
-                    {election.lifecycleStage && (
-                      <span className="text-xs font-semibold bg-white rounded-full px-2 py-1 whitespace-nowrap">
-                        {election.lifecycleStage.replace('_', ' ')}
-                      </span>
-                    )}
+                    <h2 className="text-lg font-bold text-slate-900">{election.title}</h2>
+                    <ElectionStatusBadge stage={stage} />
                   </div>
-                  <p className="text-sm text-gray-600">{election.description}</p>
-                  <div className="mt-4 flex justify-between">
-                    {election.effectiveStatus === "draft" && isAdmin && (
+                  {election.description && <p className="mt-1 line-clamp-2 text-sm text-slate-600">{election.description}</p>}
+                  <p className="mt-2 text-xs text-slate-500">{formatDateTime(election.startTime)} – {formatDateTime(election.endTime)}</p>
+                  {isAdmin && <p className="text-xs text-slate-500">{election.candidates?.length || 0} candidate(s)</p>}
+                  {!isAdmin && election.votedAt && (
+                    <p className="mt-2 inline-flex items-center gap-1 text-sm text-green-700"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Voted {formatDateTime(election.votedAt)}</p>
+                  )}
+                  <ElectionCountdown election={election} onStageChange={load} compact className="mt-3" />
+
+                  <div className="mt-auto flex flex-wrap gap-2 pt-4">
+                    {isAdmin && stage === "DRAFT" && (
                       <>
-                        <Link
-                          to={`/elections/${election._id}`}
-                          className="text-white bg-orange-400 flex justify-center items-center rounded-md p-2"
-                        >
-                          Edit Candidates
-                        </Link>
+                        <Link to={`/elections/${election._id}`} className={`${btn} text-[#1E3A8A] ring-1 ring-slate-300 hover:bg-slate-50`}>Edit Candidates</Link>
+                        <button disabled={busy} onClick={() => scheduleElection(election)} className={`${btn} bg-green-600 text-white hover:bg-green-700`}>Schedule</button>
+                      </>
+                    )}
+                    {isAdmin && stage === "UPCOMING" && (
+                      <>
+                        <Link to={`/elections/${election._id}`} className={`${btn} text-[#1E3A8A] ring-1 ring-slate-300 hover:bg-slate-50`}>Manage Candidates</Link>
                         <button
-                          onClick={() => handleScheduleElection(election._id)}
-                          className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                          disabled={busy || !election.candidates?.length}
+                          title={!election.candidates?.length ? "Add at least one candidate before starting" : "Start election now"}
+                          onClick={() => startElection(election)}
+                          className={`${btn} bg-green-600 text-white hover:bg-green-700 disabled:cursor-not-allowed`}
                         >
-                          Schedule
+                          Start Now
                         </button>
                       </>
                     )}
-
-                    {election.effectiveStatus === "upcoming" && isAdmin && (
+                    {isAdmin && stage === "ONGOING" && (
                       <>
-                        <Link
-                          to={`/elections/${election._id}`}
-                          className="text-white bg-orange-400 flex justify-center items-center rounded-md p-2"
-                        >
-                          Add Candidate
-                        </Link>
-                        <button
-                          onClick={() =>
-                            handleStartElection(election._id, election.candidates?.length)
-                          }
-                          disabled={!election.candidates || election.candidates.length === 0}
-                          title={
-                            !election.candidates || election.candidates.length === 0
-                              ? "Add at least one candidate before starting"
-                              : "Start election"
-                          }
-                          className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
-                        >
-                          Start
-                        </button>
+                        <Link to={`/dashboard/live-results/${election._id}`} className={`${btn} bg-[#1E3A8A] text-white hover:bg-blue-800`}>Live Results</Link>
+                        <button disabled={busy} onClick={() => endElection(election)} className={`${btn} bg-red-600 text-white hover:bg-red-700`}>End Election</button>
                       </>
                     )}
-
-                    {election.effectiveStatus === "ongoing" && isAdmin && (
-                      <div className="flex gap-2">
-                        <Link
-                          to={`/dashboard/live-results/${election._id}`}
-                          className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                        >
-                          Live Results
-                        </Link>
-                        <button
-                          onClick={() => handleStopElection(election._id)}
-                          className="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700"
-                        >
-                          Stop
-                        </button>
-                      </div>
-                    )}
-
-                    {election.effectiveStatus === "completed" && isAdmin && (
-                      <Link
-                        to={`/dashboard/admin/results/${election._id}`}
-                        className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                      >
-                        {election.resultsPublished ? "Results & Emails" : "Review & Publish Results"}
+                    {isAdmin && (stage === "ENDED" || stage === "RESULTS_PUBLISHED") && (
+                      <Link to={`/dashboard/admin/results/${election._id}`} className={`${btn} bg-[#1E3A8A] text-white hover:bg-blue-800`}>
+                        {stage === "RESULTS_PUBLISHED" ? "Results & Emails" : "Review & Publish Results"}
                       </Link>
                     )}
-
-                    {election.effectiveStatus === "completed" && !isAdmin && (
-                      election.resultsPublished ? (
-                        <Link
-                          to={`/result/${election._id}`}
-                          className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                        >
-                          View Results
-                        </Link>
-                      ) : (
-                        <span className="text-gray-500 py-2">Results not yet published</span>
-                      )
+                    {!isAdmin && stage === "RESULTS_PUBLISHED" && (
+                      <Link to={`/result/${election._id}`} className={`${btn} bg-[#1E3A8A] text-white hover:bg-blue-800`}>View Results</Link>
                     )}
+                    {!isAdmin && stage !== "RESULTS_PUBLISHED" && (
+                      <Link to={`/vote/${election._id}`} className={`${btn} text-[#1E3A8A] ring-1 ring-slate-300 hover:bg-slate-50`}>View Receipt</Link>
+                    )}
+                    {!isAdmin && stage === "ENDED" && <span className="py-2 text-sm text-slate-500">Results have not been published yet.</span>}
                   </div>
-                </div>
-              </div>
-            ))}
+                </article>
+              );
+            })}
           </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-md p-6 text-center border border-blue-200">
-            <p className="text-blue-600">No elections found.</p>
-          </div>
-        )}
-
-        {isAdmin && (
-          <Link
-            to="/createElection"
-            className="mt-8 inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-          >
-            Create New Election
-          </Link>
         )}
       </div>
     </div>

@@ -43,7 +43,7 @@ export default function LiveResults() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 lg:ml-64">
         <p className="text-gray-500">Loading live results...</p>
       </div>
     );
@@ -51,7 +51,7 @@ export default function LiveResults() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 lg:ml-64">
         <div className="text-center">
           <ShieldAlert className="w-10 h-10 text-red-500 mx-auto mb-2" />
           <p className="text-red-600">{error}</p>

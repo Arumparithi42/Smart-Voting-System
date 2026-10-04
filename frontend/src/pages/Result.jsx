@@ -1,173 +1,113 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { useParams } from 'react-router-dom';
-import { Bar } from 'react-chartjs-2';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { CalendarDays, Lock, Trophy, Users, Vote } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import Header from '../components/Header/Header';
+import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
+import { ErrorState, LoadingState } from '../components/ui/States';
+import { formatDateTime } from '../utils/electionStages';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+// Official, aggregate-only results. The API refuses (403) until an Admin has
+// published them; nothing here can identify a voter or a ballot.
+export default function Result() {
+  const { electionId } = useParams();
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null); // { message, locked }
 
-export default function Component() {
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0)
-  const[title, setTitle] = useState('');
-  const [candidates, setCandidates] = useState([]);
-  const [turnout, setTurnout] = useState(null);
-  const [winnerData, setWinnerData] = useState(null);
-  const [isTie, setIsTie] = useState(false);
-  const [error, setError] = useState('');
-  const { electionId } = useParams()
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  useEffect(() => {
-    const fetchElections = async () => {
-      try {
-        const response = await axiosInstance.get(`/api/elections/${electionId}/results`);
-        // console.log('Fetched election data:', response.data);
-        setTitle(response.data.electionTitle);
-        if (response.data.turnout) setTurnout(response.data.turnout);
-        if (response.data.winner) setWinnerData(response.data.winner);
-        setIsTie(response.data.isTie || false);
-        
-        const fetchedCandidates = response.data.results.map((candidate) => ({
-          ...candidate,
-          symbol: candidate.partySymbolUrl || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_hwE2DtYle0M11E0IgPGW1D9_XME9YDuLzA&s',
-          image: candidate.profilePhotoUrl || 'https://t4.ftcdn.net/jpg/00/99/13/41/240_F_99134157_dFAWZmsNpZ0ghgnU3g1W5I9XcJEnDQGg.jpg'
-        }));
-        setCandidates(fetchedCandidates);
-      } catch (error) {
-        console.error('Error fetching election data:', error);
-        // 403 = ended but not yet officially published; 400 = still open.
-        setError(error.response?.data?.message || 'Could not load results');
-      }
-    };
-    fetchElections();
+  const load = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get(`/api/elections/${electionId}/results`);
+      setData(res.data);
+      setError(null);
+    } catch (err) {
+      const status = err.response?.status;
+      setError({
+        message: err.response?.data?.message || 'Unable to load results.',
+        locked: status === 403 || status === 400,
+      });
+    }
   }, [electionId]);
-  const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.votes, 0);
 
-  const chartData = {
-    labels: candidates.map(candidate => candidate.name),
-    datasets: [
-      {
-        label: 'Votes',
-        data: candidates.map(candidate => candidate.votes),
-        backgroundColor: 'rgba(54, 162, 235, 0.6)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
-      }
-    ]
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const chartOptions = {
-    indexAxis: 'y',
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      tooltip: { enabled: true }
-    }
-  };
+  const tie = data?.isTie;
+  const noVotes = data && data.totalVotes === 0;
 
-  function getBarColor(votes, totalVotes) {
-    const percentage = (votes / totalVotes) * 100;
-    if (percentage >= 75) {
-      return "bg-green-500"; // For example, green for 75% and above
-    } else if (percentage >= 50) {
-      return "bg-blue-500"; // Blue for 50% to 74%
-    } else if (percentage >= 25) {
-      return "bg-yellow-500"; // Yellow for 25% to 49%
-    } else {
-      return "bg-red-500"; // Red for less than 25%
-    }
-  }
+  return (
+    <div className="app-ui min-h-screen bg-gradient-to-b from-yellow-50 to-white">
+      <Header />
+      <main className="mx-auto max-w-4xl px-4 pb-16 pt-8 sm:px-6">
+        <Link to="/elections" className="text-sm font-semibold text-blue-700 hover:underline">← All elections</Link>
 
-    if (error) {
-      return (
-        <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12 flex items-center justify-center px-4">
-          <div className="bg-white shadow-lg rounded-xl p-8 text-center max-w-md">
-            <h1 className="text-2xl font-bold text-blue-900 mb-2">Results unavailable</h1>
-            <p className="text-gray-600">{error}</p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 from-yellow-100 via-yellow-100 to-white">
-          <div className="text-center space-y-4 mb-12">
-            <h1 className="text-4xl sm:text-5xl font-bold text-blue-900"> {title}</h1>
-            <div className="flex flex-col sm:flex-row justify-center gap-6 mt-4">
-              <p className="text-xl text-gray-600">Total Votes: <span className="font-semibold text-blue-700">{totalVotes.toLocaleString()}</span></p>
-              {turnout && (
-                <>
-                  <p className="text-xl text-gray-600">Eligible Voters: <span className="font-semibold text-blue-700">{turnout.eligibleVoters.toLocaleString()}</span></p>
-                  <p className="text-xl text-gray-600">Turnout: <span className="font-semibold text-blue-700">{turnout.percentage.toFixed(2)}%</span></p>
-                </>
-              )}
+        {error ? (
+          error.locked ? (
+            <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
+              <Lock className="h-10 w-10 text-slate-400" aria-hidden="true" />
+              <h1 className="text-xl font-bold text-slate-900">Results unavailable</h1>
+              <p className="max-w-md text-slate-600">{error.message}</p>
+              <Link to={`/explore/${electionId}`} className="text-sm font-semibold text-blue-700 underline">View election details</Link>
             </div>
-          </div>
-
-          <div className={`grid ${windowWidth > 768 ? 'md:grid-cols-2' : ''} gap-8`}>
-            <div className="space-y-6">
-              {candidates.map((candidate, index) => (
-                <motion.div
-                  key={candidate.candidateId}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow duration-300"
-                >
-                  <div className="flex items-center gap-6 p-6">
-                    <img
-                      src={candidate.image}
-                      alt={candidate.name}
-                      className="h-24 w-24 rounded-full object-cover border-4 border-blue-500 shadow-md"
-                    />
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-xl text-blue-900">{candidate.name}</h3>
-                        <span className={`${getBarColor(candidate.votes, totalVotes)} text-white  text-lg p-3 rounded-full font-semibold shadow`}>
-                          {(candidate.percentage ?? 0).toFixed(1)}%
-                        </span>
-                      </div>
-                      <p className="text-gray-600 font-medium">{candidate.partyName}</p>
-                      <p className="font-mono text-blue-700 text-lg">{candidate.votes.toLocaleString()} votes</p>
-                    </div>
-                  </div>
-                  <div className={`h-2 ${getBarColor(candidate.votes, totalVotes)}`} style={{ width: `${candidate.percentage ?? 0}%` }}></div>
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-6 text-blue-900">Vote Distribution</h2>
-                <Bar data={chartData} options={chartOptions} className="mb-4" />
-                <div className="text-center mt-4">
-                  {isTie && (
-                     <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded mb-4">
-                        <h3 className="text-xl font-bold">TIE!</h3>
-                        <p className="font-medium text-lg mt-2">Multiple candidates tied with {winnerData?.votes} votes:</p>
-                        <ul className="text-blue-900 font-bold mt-2">
-                          {winnerData?.candidates.map((c, i) => <li key={i}>{c}</li>)}
-                        </ul>
-                     </div>
-                  )}
-                  {!isTie && winnerData && winnerData.votes > 0 && (
-                     <h3 className="text-xl font-semibold text-green-600">Winner: {winnerData.candidates[0]} <span className="text-sm font-normal text-gray-600">({winnerData.votes} votes)</span></h3>
-                  )}
-                  {winnerData && winnerData.votes === 0 && (
-                     <h3 className="text-lg font-semibold text-red-600">No votes cast</h3>
-                  )}
-                </div>
+          ) : <ErrorState className="mt-6" message={error.message} onRetry={load} />
+        ) : !data ? <LoadingState label="Loading results…" /> : (
+          <div className="mt-4 space-y-6">
+            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <h1 className="text-2xl font-bold text-[#1E3A8A] sm:text-3xl">{data.electionTitle}</h1>
+                <ElectionStatusBadge stage="RESULTS_PUBLISHED" className="self-start" />
               </div>
-            </div>
+              {data.description && <p className="mt-2 text-slate-700">{data.description}</p>}
+              <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-400" aria-hidden="true" /> Election: {formatDateTime(data.startTime)} – {formatDateTime(data.endTime)}</p>
+                <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-400" aria-hidden="true" /> Published: {formatDateTime(data.resultsPublishedAt)}</p>
+              </div>
+            </section>
+
+            <section className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+                <p className="flex items-center gap-2 text-sm text-slate-500"><Vote className="h-4 w-4" aria-hidden="true" /> Total votes</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums text-slate-900">{data.totalVotes.toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+                <p className="flex items-center gap-2 text-sm text-slate-500"><Users className="h-4 w-4" aria-hidden="true" /> Turnout</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums text-slate-900">{data.turnout ? `${data.turnout.percentage.toFixed(1)}%` : '—'}</p>
+                {data.turnout && <p className="text-xs text-slate-500">{data.turnout.votesCast} of {data.turnout.eligibleVoters} eligible voters</p>}
+              </div>
+              <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+                <p className="flex items-center gap-2 text-sm text-slate-500"><Trophy className="h-4 w-4" aria-hidden="true" /> {tie ? 'Result' : 'Winner'}</p>
+                <p className="mt-1 text-xl font-bold text-slate-900">
+                  {noVotes ? 'No votes cast' : tie ? 'Tie' : data.winner?.candidates?.[0] || '—'}
+                </p>
+                {tie && <p className="text-xs text-slate-500">{data.winner.candidates.join(', ')} · {data.winner.votes} votes each</p>}
+              </div>
+            </section>
+
+            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200" aria-labelledby="results-heading">
+              <h2 id="results-heading" className="mb-4 text-lg font-bold text-slate-900">Final results</h2>
+              <ul className="space-y-4">
+                {data.results.map((r) => (
+                  <li key={r.candidateId}>
+                    <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="font-semibold text-slate-900">
+                        {r.name} {r.partyName && <span className="font-normal text-slate-500">({r.partyName})</span>}
+                        {r.isWinner && !noVotes && (
+                          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+                            <Trophy className="h-3 w-3" aria-hidden="true" /> {tie ? 'Tied' : 'Winner'}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm tabular-nums text-slate-700"><span className="font-semibold">{r.votes.toLocaleString()}</span> votes · {r.percentage.toFixed(1)}%</p>
+                    </div>
+                    <div className="h-2.5 w-full rounded-full bg-slate-100" aria-hidden="true">
+                      <div className="h-2.5 rounded-full bg-blue-600" style={{ width: `${r.percentage}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-6 text-xs text-slate-500">Aggregate totals only. Individual ballots are secret and are never displayed.</p>
+            </section>
           </div>
-        </div>
-      </div>
-    )
-  }
+        )}
+      </main>
+    </div>
+  );
+}

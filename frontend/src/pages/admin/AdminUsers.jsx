@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../utils/axiosInstance';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
+import PageHeader from '../../components/ui/PageHeader';
 
 // Admin: appoint / remove Election Officers. Admin accounts can't be
 // created or changed here (enforced by the backend too).
 export default function AdminUsers() {
+  const [loadState, setLoadState] = useState('loading');
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
 
@@ -12,8 +15,10 @@ export default function AdminUsers() {
     try {
       const res = await axiosInstance.get('/api/admin/users');
       setUsers(res.data);
+      setLoadState('ready');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Could not load users');
+      setLoadState('error');
     }
   }, []);
 
@@ -37,13 +42,13 @@ export default function AdminUsers() {
   );
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold text-[#1E3A8A] mb-2">Users &amp; Election Officers</h1>
-        <p className="text-gray-600 mb-6">Election Officers can propose elections and monitor them. Only Admins can create elections and publish results.</p>
+        <PageHeader title="Officers & Users" subtitle="Election Officers can propose elections and monitor them. Only Admins can create elections and publish results." />
 
         <input className="px-3 py-2 border rounded mb-4 w-full md:w-80" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} />
 
+        {loadState === 'loading' ? <LoadingState /> : loadState === 'error' ? <ErrorState message="Unable to load users." onRetry={load} /> : visible.length === 0 ? <EmptyState title="No users found." /> : (
         <div className="bg-white rounded-lg shadow overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-100 text-gray-600">
@@ -73,6 +78,7 @@ export default function AdminUsers() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

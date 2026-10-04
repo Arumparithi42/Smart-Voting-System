@@ -3,6 +3,8 @@ import { toast } from 'react-toastify';
 import axiosInstance from '../utils/axiosInstance';
 import { COMPLAINT_CATEGORIES, COMPLAINT_STATUS_STYLES, complaintCategoryLabel, formatDateTime } from '../utils/labels';
 import StatusBadge from '../components/StatusBadge';
+import { ErrorState, LoadingState } from '../components/ui/States';
+import PageHeader from '../components/ui/PageHeader';
 
 const emptyForm = { electionId: '', category: '', subject: '', description: '', supportingInfo: '' };
 
@@ -11,6 +13,7 @@ const emptyForm = { electionId: '', category: '', subject: '', description: '', 
 export default function MyComplaints() {
   const [form, setForm] = useState(emptyForm);
   const [elections, setElections] = useState([]);
+  const [loadState, setLoadState] = useState('loading');
   const [complaints, setComplaints] = useState([]);
   const [submitted, setSubmitted] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -19,8 +22,10 @@ export default function MyComplaints() {
     try {
       const res = await axiosInstance.get('/api/complaints/my');
       setComplaints(res.data);
+      setLoadState('ready');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Could not load your complaints');
+      setLoadState('error');
     }
   };
 
@@ -50,12 +55,9 @@ export default function MyComplaints() {
   const input = 'mt-1 px-3 py-2 w-full border border-gray-300 rounded-md';
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-gradient-to-r from-blue-500 to-teal-400 text-white rounded-lg shadow-lg p-8 mb-8">
-          <h1 className="text-3xl font-bold">Raise Complaint</h1>
-          <p className="mt-2 text-blue-100">Report a problem or compliance issue. Complaints are sent directly to the Admin.</p>
-        </div>
+        <PageHeader title={<>Raise Complaint</>} subtitle={<>Report a problem or compliance issue. Complaints are sent directly to the Admin.</>} />
 
         {submitted && (
           <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded mb-6">
@@ -99,7 +101,7 @@ export default function MyComplaints() {
         </form>
 
         <h2 className="text-2xl font-bold text-[#1E3A8A] mb-4">My Complaints</h2>
-        {complaints.length === 0 ? (
+        {loadState === 'loading' ? <LoadingState /> : loadState === 'error' ? <ErrorState message="Unable to load this page." onRetry={load} /> : complaints.length === 0 ? (
           <div className="bg-white p-6 rounded shadow text-center text-gray-500">You haven&apos;t raised any complaints.</div>
         ) : (
           <div className="space-y-4">

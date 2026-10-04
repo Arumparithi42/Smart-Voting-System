@@ -1,99 +1,15 @@
-import { useUser } from "@clerk/clerk-react";
-import { Link } from "react-router-dom";
-import { Avatar } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import VoterHome from '../pages/dashboards/VoterHome';
+import OfficerDashboard from '../pages/dashboards/OfficerDashboard';
+import AdminDashboard from '../pages/dashboards/AdminDashboard';
+import { LoadingState } from '../components/ui/States';
 
-const MainDashBoard = ({isAdmin, role}) => {
-  const { user } = useUser();
-  const navigate = useNavigate();
-  if (!user) {
-    return null; // Or handle the case when user is null
-  }
-  console.log(user);
-
-  const quickActions = [
-    { title: isAdmin ? "Create Elections" : "Vote Now", icon: "M13 10V3L4 14h7v7l9-11h-7z", route: isAdmin ? "/dashboard/elections" : "/elections", },
-    { title: "Voting History", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", route: "/dashboard/elections" },
-    { title: "Upcoming Elections", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z", route: "/elections" }
-  ];
-
-  if (isAdmin) {
-    quickActions.push({ title: "Live Elections", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", route: "/elections" });
-    quickActions.push({ title: "Election Proposals", icon: "M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-7-3-7 3V6a2 2 0 012-2z", route: "/dashboard/admin/proposals" });
-    quickActions.push({ title: "Complaints", icon: "M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z", route: "/dashboard/admin/complaints" });
-  } else if (role === 'officer') {
-    quickActions.push({ title: "Propose Election", icon: "M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-7-3-7 3V6a2 2 0 012-2z", route: "/dashboard/officer/proposals" });
-    quickActions.push({ title: "Monitor Elections", icon: "M9 19V6l12-3v13M9 19l-7 3V9l7-3", route: "/dashboard/officer/elections" });
-  } else {
-    quickActions.push({ title: "Raise Complaint", icon: "M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z", route: "/dashboard/complaints" });
-  }
-
-  return (
-    <div className="bg-white text-black items-center pt-28 min-h-screen lg:ml-64 flex flex-col gap-4 justify-between p-8 -mt-14" style={{ height: '500px', width: "83%" }}>
-
-      <div className="min-h-screen bg-transparent w-full">
-        {/* Header */}
-        <header className="mb-8 flex items-center justify-between">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Online Voting Dashboard</h1>
-          <Link to="/" className="text-blue-500 hover:underline">Back to Home</Link>
-        </header>
-
-        {/* Welcome Card */}
-        <div className="mb-8 bg-gradient-to-r from-blue-500 to-teal-400 rounded-lg p-6 text-white shadow-lg">
-          <h2 className="text-2xl font-bold mb-2">
-            Welcome back, {user.fullName}!
-          </h2>
-          <p className="text-blue-100">
-            Your last vote was on 15th October 2024.
-          </p>
-          <p className="mt-4">
-            Current Election Status: Voting for the upcoming election is open.
-          </p>
-        </div>
-
-        {/* Quick Actions */}
-        <h2 className="mb-4 text-xl font-semibold text-gray-700">Quick Actions</h2>
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-          {quickActions.map((action, index) => (
-            <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">{action.title}</h3>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={action.icon} />
-                </svg>
-              </div>
-              <button
-                onClick={() => navigate(action.route)}
-                className="w-full py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                {action.primary ? "Vote Now" : "View"}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* User Profile Summary */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Your Profile</h2>
-          <div className="flex items-center space-x-4">
-            <Avatar src={user.imageUrl} alt={user.fullName} sx={{ width: 100, height: 100 }} />
-            <div>
-              <h3 className="text-lg font-semibold">{user.fullName}</h3>
-              <p className="text-sm text-gray-500">
-                Voter ID: V0T3${user.id}
-              </p>
-              <p className="text-sm text-gray-500">{user.primaryEmailAddress.emailAddress}</p>
-              <p className="text-sm text-gray-500">Phone: +1 (555) 123-4567</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Voting History */}
-   
-
-      </div>
-    </div>
-  );
-}
+// Role-specific home. The role only picks which dashboard to show; each
+// dashboard's API calls are authorized server-side.
+const MainDashBoard = ({ role, roleLoading }) => {
+  if (roleLoading) return <div className="lg:ml-64"><LoadingState label="Loading your dashboard…" /></div>;
+  if (role === 'admin') return <AdminDashboard />;
+  if (role === 'officer') return <OfficerDashboard />;
+  return <VoterHome />;
+};
 
 export default MainDashBoard;

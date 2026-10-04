@@ -15,7 +15,8 @@ import CreateElection from "../Dashboard/CreateElection.jsx";
 import ElectionDetail from "../pages/ElectionDetail.jsx";
 import Vote from "../pages/Vote.jsx";
 import Result from '../pages/Result.jsx';
-import Explore from "../pages/Explore.jsx";
+import ElectionDetails from "../pages/ElectionDetails.jsx";
+import DashboardLayout from "../layouts/DashboardLayout.jsx";
 import VerifyReceipt from "../pages/VerifyReceipt.jsx";
 import RequireAdmin from "./RequireAdmin.jsx";
 import VoterLogin from "../pages/VoterLogin.jsx";
@@ -37,7 +38,7 @@ const Routers = () => {
         path="/voter-registry"
         element={
           <RequireAdmin>
-            <VoterRegistry />
+            <DashboardLayout><VoterRegistry /></DashboardLayout>
           </RequireAdmin>
         }
       />
@@ -45,7 +46,7 @@ const Routers = () => {
         path="/createElection"
         element={
           <RequireAdmin>
-            <CreateElection />
+            <DashboardLayout><CreateElection /></DashboardLayout>
           </RequireAdmin>
         }
       />
@@ -53,7 +54,7 @@ const Routers = () => {
         path="/createELection"
         element={
           <RequireAdmin>
-            <CreateElection />
+            <DashboardLayout><CreateElection /></DashboardLayout>
           </RequireAdmin>
         }
       />
@@ -61,24 +62,24 @@ const Routers = () => {
         path="/elections/:id"
         element={
           <RequireAdmin>
-            <ElectionDetail />
+            <DashboardLayout><ElectionDetail /></DashboardLayout>
           </RequireAdmin>
         }
       />
       <Route path='/dashboard/*' element={< UserDashboard/>}></Route>
       <Route path="/vote/:electionId" element={<Vote />} />
-      <Route path="/explore/:electionId" element={<Explore/>} />
+      <Route path="/explore/:electionId" element={<ElectionDetails />} />
       <Route path="/result/:electionId" element={<Result/>} />
       <Route path="/verify-receipt" element={<VerifyReceipt/>} />
       <Route
         path="/apply-candidate"
-        element={<ApplyCandidate />}
+        element={<DashboardLayout><ApplyCandidate /></DashboardLayout>}
        />
       <Route
         path="/admin/candidate-applications"
         element={
           <RequireAdmin>
-            <AdminApplications />
+            <DashboardLayout><AdminApplications /></DashboardLayout>
           </RequireAdmin>
         }
       />

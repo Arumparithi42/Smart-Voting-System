@@ -60,3 +60,11 @@
     }
 }
 
+/* New app UI manages its own spacing: opt it out of the landing-page
+   section padding (both the base rule and the <=1024px rule above).
+   Kept last so it wins on order; :where() keeps its specificity at a bare
+   element selector, so explicit utilities (p-6, py-4, ...) still win. */
+:where(.app-ui) section, section:where(.app-ui) {
+    padding-top: 0;
+    padding-bottom: 0;
+}

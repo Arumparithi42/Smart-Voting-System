@@ -72,7 +72,7 @@ const ApplyCandidate = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-[#1E3A8A] mb-8">Candidate Applications</h1>
 

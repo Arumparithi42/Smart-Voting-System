@@ -2,14 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axiosInstance from '../utils/axiosInstance';
-import { LIFECYCLE_STYLES, formatDateTime } from '../utils/labels';
-import StatusBadge from '../components/StatusBadge';
+import { formatDateTime } from '../utils/labels';
+import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
+import { useConfirm } from '../components/ui/ConfirmDialog';
+import { LoadingState } from '../components/ui/States';
 
 // Final-results review after voting closes.
 //   mode="officer": review + "Recommend publication" (advice only)
 //   mode="admin":   review + "Publish Results" (official) + result email
 //                   delivery status / retry failed deliveries
 export default function ElectionResultsReview({ mode }) {
+  const confirm = useConfirm();
   const { electionId } = useParams();
   const isAdmin = mode === 'admin';
   const base = isAdmin ? '/api/admin' : '/api/officer';
@@ -52,7 +55,11 @@ export default function ElectionResultsReview({ mode }) {
   };
 
   const publish = async () => {
-    if (!window.confirm('Publish these results? They become public and every voter who voted receives a result email. This cannot be undone.')) return;
+    if (!(await confirm({
+      title: 'Publish final results?',
+      message: 'Are you sure you want to publish the final results? They become public immediately and every voter who voted receives a result email. This cannot be undone.',
+      confirmLabel: 'Publish Results',
+    }))) return;
     setBusy(true);
     try {
       const res = await axiosInstance.post(`/api/admin/elections/${electionId}/publish-results`);
@@ -82,18 +89,19 @@ export default function ElectionResultsReview({ mode }) {
   const backLink = isAdmin ? '/dashboard/elections' : '/dashboard/officer/elections';
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-5xl mx-auto">
         <Link to={backLink} className="text-blue-600 hover:underline text-sm">← Back</Link>
 
         {error && <div className="mt-4 bg-white p-6 rounded shadow text-gray-700">{error}</div>}
 
+        {!summary && !error && <LoadingState label="Loading final results…" />}
         {summary && (
           <>
             <div className="bg-gradient-to-r from-blue-500 to-teal-400 text-white rounded-lg shadow-lg p-8 my-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h1 className="text-3xl font-bold">{summary.electionTitle}</h1>
-                <StatusBadge value={summary.lifecycleStage} styles={LIFECYCLE_STYLES} />
+                <ElectionStatusBadge stage={summary.lifecycleStage} />
               </div>
               <p className="mt-2 text-blue-100">
                 Final aggregate results · {summary.totalVotes} votes cast

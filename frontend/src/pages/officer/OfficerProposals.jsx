@@ -3,6 +3,8 @@ import { toast } from 'react-toastify';
 import axiosInstance from '../../utils/axiosInstance';
 import { PROPOSAL_STATUS_STYLES, toDateTimeLocal, formatDateTime } from '../../utils/labels';
 import StatusBadge from '../../components/StatusBadge';
+import { ErrorState, LoadingState } from '../../components/ui/States';
+import PageHeader from '../../components/ui/PageHeader';
 
 const emptyForm = {
   title: '',
@@ -20,6 +22,7 @@ const emptyForm = {
 export default function OfficerProposals() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  const [loadState, setLoadState] = useState('loading');
   const [proposals, setProposals] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,8 +30,10 @@ export default function OfficerProposals() {
     try {
       const res = await axiosInstance.get('/api/officer/proposals');
       setProposals(res.data);
+      setLoadState('ready');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Could not load your proposals');
+      setLoadState('error');
     }
   };
 
@@ -90,14 +95,11 @@ export default function OfficerProposals() {
   const input = 'mt-1 px-3 py-2 w-full border border-gray-300 rounded-md';
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-5xl mx-auto">
-        <div className="bg-gradient-to-r from-blue-500 to-teal-400 text-white rounded-lg shadow-lg p-8 mb-8">
-          <h1 className="text-3xl font-bold">{editingId ? 'Revise Election Proposal' : 'Propose New Election'}</h1>
-          <p className="mt-2 text-blue-100">
+        <PageHeader title={<>{editingId ? 'Revise Election Proposal' : 'Propose New Election'}</>} subtitle={<>
             Proposals are reviewed by the Admin. Only the Admin can approve and create the official election.
-          </p>
-        </div>
+          </>} />
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4 mb-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -176,7 +178,7 @@ export default function OfficerProposals() {
         </form>
 
         <h2 className="text-2xl font-bold text-[#1E3A8A] mb-4">My Proposals</h2>
-        {proposals.length === 0 ? (
+        {loadState === 'loading' ? <LoadingState /> : loadState === 'error' ? <ErrorState message="Unable to load this page." onRetry={load} /> : proposals.length === 0 ? (
           <div className="bg-white p-6 rounded shadow text-center text-gray-500">No proposals yet.</div>
         ) : (
           <div className="space-y-4">

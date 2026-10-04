@@ -4,6 +4,11 @@ import ElectionCountdown from '../components/ElectionCountdown';
 import { CheckCircle, ChevronRight, Copy, ShieldCheck, Loader2 } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUser } from "@clerk/clerk-react";
+import Header from '../components/Header/Header';
+import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
+import { useConfirm } from '../components/ui/ConfirmDialog';
+import { serverNow } from '../utils/serverClock';
+import { stageAt } from '../utils/electionStages';
 
 export default function Vote() {
   const [selectedCandidate, setSelectedCandidate] = useState('');
@@ -14,7 +19,8 @@ export default function Vote() {
   const [effectiveStatus, setEffectiveStatus] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [currentTime, setCurrentTime] = useState(serverNow());
+  const [resultsPublished, setResultsPublished] = useState(false);
   const [isVoting, setIsVoting] = useState(false); // To handle the loading state
   const [checkingStatus, setCheckingStatus] = useState(true); // "have they already voted?" check, before showing the ballot
   const [voteStatus, setVoteStatus] = useState(null); // 'success' | 'already-voted' | 'error' | null
@@ -25,6 +31,7 @@ export default function Vote() {
   const { electionId } = useParams();
   const { isLoaded, isSignedIn, user } = useUser();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   
   useEffect(() => {
     const fetchElections = async () => {
@@ -35,6 +42,7 @@ export default function Vote() {
         setEffectiveStatus(response.data.effectiveStatus);
         setStartTime(response.data.startTime);
         setEndTime(response.data.endTime);
+        setResultsPublished(!!response.data.resultsPublished);
         const fetchedCandidates = response.data.candidates.map((candidate) => ({
           ...candidate,
           symbol: candidate.partySymbolUrl || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_hwE2DtYle0M11E0IgPGW1D9_XME9YDuLzA&s',
@@ -51,7 +59,7 @@ export default function Vote() {
   useEffect(() => {
     if (!endTime) return undefined;
 
-    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    const timer = setInterval(() => setCurrentTime(serverNow()), 1000);
     return () => clearInterval(timer);
   }, [endTime]);
 
@@ -99,6 +107,12 @@ export default function Vote() {
     }
 
     const selectedCandidateData = candidates.find(candidate => candidate.name === selectedCandidate);
+    const confirmed = await confirm({
+      title: 'Cast your vote?',
+      message: `Are you sure you want to cast your vote for ${selectedCandidateData?.name}${selectedCandidateData?.partyName ? ` (${selectedCandidateData.partyName})` : ''}?\nYour vote is final and cannot be changed.`,
+      confirmLabel: 'Yes, cast my vote',
+    });
+    if (!confirmed) return;
     setIsVoting(true);
     setErrorMessage('');
     setNeedsVoterVerification(false);
@@ -224,37 +238,26 @@ export default function Vote() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-yellow-100 via-yellow-100 to-white text-gray-800">
-      <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-[#1e3a8a] mb-4 text-center">{title}</h1>
+    <div className="app-ui min-h-screen bg-gradient-to-b from-yellow-50 to-white text-gray-800">
+      <Header />
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-[#1e3a8a] mb-4 text-center">{title}</h1>
         <p className="text-lg text-gray-600 mb-8 text-center max-w-2xl mx-auto">
           {description}
         </p>
 
-        {effectiveStatus === 'upcoming' && (
-          <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 max-w-3xl mx-auto mb-6 text-center text-lg font-semibold">
-            Voting has not started yet. <br /> Starts at: {startTime ? new Date(startTime).toLocaleString() : 'TBD'}
+        {/* Display only - the server decides whether a vote is accepted. */}
+        <div className="max-w-3xl mx-auto mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <ElectionStatusBadge stage={stageAt({ startTime, endTime, resultsPublished, status: effectiveStatus === 'draft' ? 'draft' : undefined }, currentTime)} />
+            <p className="mt-2 text-sm text-slate-600">
+              {startTime ? new Date(startTime).toLocaleString() : 'TBD'} – {endTime ? new Date(endTime).toLocaleString() : 'TBD'}
+            </p>
+            {effectiveStatus === 'upcoming' && <p className="mt-1 text-sm font-medium text-amber-700">Voting has not started yet.</p>}
+            {(effectiveStatus === 'completed' || electionExpired) && <p className="mt-1 text-sm font-medium text-slate-700">Voting has ended.</p>}
           </div>
-        )}
-        
-        {effectiveStatus === 'ongoing' && (
-          <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 max-w-3xl mx-auto mb-6 text-center text-lg font-semibold">
-            {electionExpired ? 'Voting has ended.' : 'Voting is currently open.'}
-            {!electionExpired && (
-              <>
-                <br />
-                Ends at: {endTime ? new Date(endTime).toLocaleString() : 'TBD'}
-                <ElectionCountdown endTime={endTime} className="mt-2 text-xl" />
-              </>
-            )}
-          </div>
-        )}
-
-        {effectiveStatus === 'completed' && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 max-w-3xl mx-auto mb-6 text-center text-lg font-semibold">
-            Voting has ended.
-          </div>
-        )}
+          <ElectionCountdown election={{ startTime, endTime, resultsPublished }} />
+        </div>
 
         <div className={`max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6 ${effectiveStatus !== 'ongoing' || electionExpired ? 'opacity-50 pointer-events-none' : ''}`}>
           <h2 className="text-2xl font-semibold mb-4">Select Your Candidate</h2>

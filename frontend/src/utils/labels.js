@@ -26,14 +26,6 @@ export const PROPOSAL_STATUS_STYLES = {
   REVISION_REQUESTED: 'bg-orange-100 text-orange-800',
 };
 
-export const LIFECYCLE_STYLES = {
-  DRAFT: 'bg-gray-200 text-gray-800',
-  UPCOMING: 'bg-yellow-100 text-yellow-800',
-  ONGOING: 'bg-green-100 text-green-800',
-  ENDED: 'bg-slate-200 text-slate-800',
-  RESULTS_PUBLISHED: 'bg-blue-100 text-blue-800',
-};
-
 // "UNDER_REVIEW" -> "Under Review"
 export const humanize = (value) =>
   String(value || '')

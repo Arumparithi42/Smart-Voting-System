@@ -85,7 +85,7 @@ export default function ElectionDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-yellow-100 via-yellow-100 to-white text-gray-800">
+    <div className="min-h-screen bg-slate-50 text-gray-800 lg:ml-64">
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-[#1e3a8a] mb-4 text-center">{election?.title}</h1>
         <p className="text-lg text-gray-600 mb-8 text-center max-w-2xl mx-auto">

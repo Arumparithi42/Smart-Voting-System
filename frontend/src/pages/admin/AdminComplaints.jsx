@@ -3,12 +3,15 @@ import { toast } from 'react-toastify';
 import axiosInstance from '../../utils/axiosInstance';
 import { COMPLAINT_CATEGORIES, COMPLAINT_STATUS_STYLES, complaintCategoryLabel, humanize, formatDateTime } from '../../utils/labels';
 import StatusBadge from '../../components/StatusBadge';
+import { ErrorState, LoadingState } from '../../components/ui/States';
+import PageHeader from '../../components/ui/PageHeader';
 
 const STATUSES = ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED'];
 const FINAL = ['RESOLVED', 'REJECTED'];
 
 // Admin: Complaints / Compliance. Complaints go only to admins.
 export default function AdminComplaints() {
+  const [loadState, setLoadState] = useState('loading');
   const [complaints, setComplaints] = useState([]);
   const [elections, setElections] = useState([]);
   const [filters, setFilters] = useState({ status: '', electionId: '', category: '', search: '' });
@@ -21,8 +24,10 @@ export default function AdminComplaints() {
       const params = new URLSearchParams(Object.entries(filters).filter(([, v]) => v));
       const res = await axiosInstance.get(`/api/admin/complaints?${params}`);
       setComplaints(res.data);
+      setLoadState('ready');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Could not load complaints');
+      setLoadState('error');
     }
   }, [filters]);
 
@@ -62,9 +67,9 @@ export default function AdminComplaints() {
   const select = 'px-3 py-2 border rounded bg-white';
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-[#1E3A8A] mb-6">Complaints / Compliance</h1>
+        <PageHeader title="Complaints / Compliance" subtitle="Voter complaints come directly to Admins. Only the complainant and Admins can see them." />
 
         <div className="flex flex-wrap gap-3 mb-6">
           <input className={select} placeholder="Search complaint ID or subject" value={filters.search} onChange={setFilter('search')} />
@@ -82,7 +87,7 @@ export default function AdminComplaints() {
           </select>
         </div>
 
-        {complaints.length === 0 ? (
+        {loadState === 'loading' ? <LoadingState /> : loadState === 'error' ? <ErrorState message="Unable to load this page." onRetry={load} /> : complaints.length === 0 ? (
           <div className="bg-white p-6 shadow rounded text-center text-gray-500">No complaints found.</div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col md:flex-row">

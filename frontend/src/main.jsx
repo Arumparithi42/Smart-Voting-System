@@ -7,6 +7,7 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css';
 import { ClerkProvider } from "@clerk/clerk-react";
 import ClerkTokenBridge from './components/ClerkTokenBridge.jsx';
+import { ConfirmProvider } from './components/ui/ConfirmDialog.jsx';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -20,7 +21,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
     <ClerkTokenBridge />
     <ToastContainer position='top-center' autoClose={2000} closeOnClick={true} />
-    <App />
+    <ConfirmProvider>
+      <App />
+    </ConfirmProvider>
     </ClerkProvider>
   </BrowserRouter>
   </React.StrictMode>,

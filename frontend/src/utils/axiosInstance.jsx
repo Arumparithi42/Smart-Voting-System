@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getAuthToken } from './clerkToken';
+import { recordServerTime } from './serverClock';
 
 const axiosInstance = axios.create({
     baseURL: import.meta.env.VITE_BACKEND_URL,
@@ -23,5 +24,17 @@ axiosInstance.interceptors.request.use(async (config) => {
     }
     return config;
 });
+
+// Track the server clock for countdown display (see utils/serverClock.js).
+axiosInstance.interceptors.response.use(
+    (response) => {
+        recordServerTime(response.headers?.['x-server-time']);
+        return response;
+    },
+    (error) => {
+        recordServerTime(error.response?.headers?.['x-server-time']);
+        return Promise.reject(error);
+    }
+);
 
 export default axiosInstance;

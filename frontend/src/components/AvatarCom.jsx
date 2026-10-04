@@ -10,16 +10,16 @@ const AvatarCom = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     if (!isLoaded || !user) {
-        return <p>Loading...</p>;
+        return <span className="block h-10 w-10 animate-pulse rounded-full bg-slate-200" aria-label="Loading" />;
     }
 
     const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
 
     return (
         <div className="relative">
-            <div onClick={toggleDropdown} role="button" className="cursor-pointer">
+            <button onClick={toggleDropdown} className="cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" aria-label="Account menu" aria-expanded={isDropdownOpen}>
                 <Avatar size="40" round={true} src={user.imageUrl || ''} />
-            </div>
+            </button>
             {isDropdownOpen && (
                 <ul className="absolute right-0 mt-1 p-3 bg-white border rounded shadow-lg w-64 z-30">
                     <li className="flex items-center mb-2 gap-2">
@@ -29,6 +29,9 @@ const AvatarCom = () => {
                         </div>
                     </li>
                     <hr className="my-1" />
+                    <li><Link to="/dashboard" onClick={() => setIsDropdownOpen(false)} className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100">Dashboard</Link></li>
+                    <li><Link to="/dashboard/profile" onClick={() => setIsDropdownOpen(false)} className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100">Profile</Link></li>
+                    <li><Link to="/dashboard/notifications" onClick={() => setIsDropdownOpen(false)} className="block rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100">Notifications</Link></li>
                     <li className="flex justify-center items-center mt-2 bg-blue-700 rounded-md">
                         <SignOutButton>
                             <button className="bg-primary text-white  px-3 py-1 rounded flex items-center gap-1 text-sm">
