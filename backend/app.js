@@ -73,6 +73,7 @@ import notificationRoutes from './routes/notifications.js';
 import profileRoutes from './routes/profile.js';
 import chatbotRoutes from './routes/chatbot.js';
 import { startNotificationScheduler } from './services/notificationService.js';
+import { verifyEmailSetup } from './services/emailService.js';
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -115,5 +116,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
   // Start the server
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    verifyEmailSetup().then((status) => console.log(status));
+  });
 }

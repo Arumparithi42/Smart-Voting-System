@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "node --test --experimental-test-module-mocks tests/*.test.js"
+    "test": "node --test --experimental-test-module-mocks tests/*.test.js",
+    "test-email": "node scripts/sendTestEmail.js"
   },
   "type": "module",
   "keywords": [],

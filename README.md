@@ -67,6 +67,8 @@ See `backend/.env.example`. Email delivery is configured with `EMAIL_PROVIDER`:
 * `console` (default): emails are printed to the server console and nothing is sent. Use this for local development and demos.
 * `smtp`: real delivery via `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASSWORD`, `EMAIL_FROM` (works with Gmail app passwords, SendGrid, Mailgun, SES, Brevo, …).
 
+Check your email setup with `cd backend && npm run test-email -- you@example.com`. The backend also prints `Email: SMTP ready` or `Email: SMTP login FAILED (...)` when it starts.
+
 Election reminders: `NOTIFICATION_INTERVAL_MS` (default `60000`; `0` disables the scheduler).
 
 Chatbot: `CHATBOT_PROVIDER=rules` (default, no external service) or `anthropic` with `ANTHROPIC_API_KEY` (server-side only; optional `CHATBOT_MODEL`). Per-user rate limit: `CHATBOT_RATE_LIMIT_PER_MIN` (default 20).
