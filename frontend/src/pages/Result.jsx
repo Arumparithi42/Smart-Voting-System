@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CalendarDays, Lock, Trophy, Users, Vote } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
-import Header from '../components/Header/Header';
 import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { formatDateTime } from '../utils/electionStages';
@@ -35,9 +34,7 @@ export default function Result() {
 
   return (
     <div className="app-ui min-h-screen bg-gradient-to-b from-yellow-50 to-white">
-      <Header />
       <main className="mx-auto max-w-4xl px-4 pb-16 pt-8 sm:px-6">
-        <Link to="/elections" className="text-sm font-semibold text-blue-700 hover:underline">← All elections</Link>
 
         {error ? (
           error.locked ? (

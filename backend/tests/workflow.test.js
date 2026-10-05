@@ -827,3 +827,116 @@ test('security: server clock header, sanitizer, regression of protected routes',
     assert.equal((await api(method, path)).status, 401, `${path} unauthenticated`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Round 3: uploads (profile photo, complaint attachments), failed emails
+// ---------------------------------------------------------------------------
+
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
+const PDF = Buffer.from('%PDF-1.4\n%test\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
+
+const upload = async (path, { as, fields = {}, files = [] }) => {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  for (const f of files) form.append(f.field, new Blob([f.data], { type: f.type }), f.name);
+  const headers = as ? { 'x-test-user': as } : {};
+  const res = await fetch(`${baseUrl}${path}`, { method: 'POST', headers, body: form });
+  return { status: res.status, data: await res.json().catch(() => null) };
+};
+
+test('profile photo: upload, replace, serve publicly by random token, remove', { skip }, async () => {
+  const StoredFile = (await import('../models/StoredFile.js')).default;
+  const first = await upload('/api/profile/photo', { as: 'voter_1', files: [{ field: 'photo', data: PNG, type: 'image/png', name: 'me.png' }] });
+  assert.equal(first.status, 200);
+  assert.match(first.data.profile.photoPath, /^\/api\/media\/profile\/[a-f0-9]{48}$/);
+
+  const img = await fetch(`${baseUrl}${first.data.profile.photoPath}`);
+  assert.equal(img.status, 200);
+  assert.equal(img.headers.get('content-type'), 'image/png');
+  assert.equal(img.headers.get('x-content-type-options'), 'nosniff');
+
+  // Replacing deletes the old file
+  const second = await upload('/api/profile/photo', { as: 'voter_1', files: [{ field: 'photo', data: PNG, type: 'image/png', name: 'me2.png' }] });
+  assert.equal(second.status, 200);
+  assert.equal((await fetch(`${baseUrl}${first.data.profile.photoPath}`)).status, 404);
+  assert.equal(await StoredFile.countDocuments({ kind: 'profile-photo', ownerClerkId: 'voter_1' }), 1);
+
+  // Content is checked, not the claimed type/extension
+  const fake = await upload('/api/profile/photo', { as: 'voter_1', files: [{ field: 'photo', data: Buffer.from('<svg onload=alert(1)>'), type: 'image/png', name: 'x.png' }] });
+  assert.equal(fake.status, 400);
+  assert.equal((await upload('/api/profile/photo', { as: 'voter_1', files: [{ field: 'photo', data: PDF, type: 'application/pdf', name: 'x.pdf' }] })).status, 400);
+  const big = await upload('/api/profile/photo', { as: 'voter_1', files: [{ field: 'photo', data: Buffer.concat([PNG, Buffer.alloc(2.1 * 1024 * 1024)]), type: 'image/png', name: 'big.png' }] });
+  assert.equal(big.status, 400);
+  assert.match(big.data.message, /at most 2 MB/);
+  assert.equal((await upload('/api/profile/photo', { files: [{ field: 'photo', data: PNG, type: 'image/png', name: 'a.png' }] })).status, 401);
+  assert.equal((await fetch(`${baseUrl}/api/media/profile/not-a-token`)).status, 404);
+
+  const removed = await api('DELETE', '/api/profile/photo', { as: 'voter_1' });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.data.profile.photoPath, null);
+  assert.equal((await fetch(`${baseUrl}${second.data.profile.photoPath}`)).status, 404);
+});
+
+test('complaint attachments: stored with the complaint, visible only to owner and admin', { skip }, async () => {
+  const created = await upload('/api/complaints', {
+    as: 'voter_2',
+    fields: { category: 'TECHNICAL_PROBLEM', subject: 'Error screen', description: 'See screenshot', electionId: state.electionId },
+    files: [
+      { field: 'attachments', data: PNG, type: 'image/png', name: 'screen shot.png' },
+      { field: 'attachments', data: PDF, type: 'application/pdf', name: 'log.pdf' },
+    ],
+  });
+  assert.equal(created.status, 201);
+  const atts = created.data.complaint.attachments;
+  assert.equal(atts.length, 2);
+  assert.deepEqual(atts.map((a) => a.contentType), ['image/png', 'application/pdf']);
+  assert.equal(atts[0].filename, 'screen_shot.png');
+
+  const get = (as, id) => fetch(`${baseUrl}/api/complaints/attachments/${id}`, { headers: as ? { 'x-test-user': as } : {} });
+  const own = await get('voter_2', atts[0].fileId);
+  assert.equal(own.status, 200);
+  assert.equal(own.headers.get('content-type'), 'image/png');
+  assert.equal((await get(ADMIN, atts[1].fileId)).status, 200);
+  assert.equal((await get('voter_1', atts[0].fileId)).status, 404, 'other voters cannot read it');
+  assert.equal((await get(OFFICER, atts[0].fileId)).status, 404, 'officers cannot read it');
+  assert.equal((await get(null, atts[0].fileId)).status, 401);
+  // Attachments are never exposed via the public media route
+  assert.equal((await fetch(`${baseUrl}/api/media/profile/${atts[0].fileId}`)).status, 404);
+
+  // Admin sees attachment metadata on the complaint
+  const adminView = await api('GET', `/api/admin/complaints/${created.data.referenceId}`, { as: ADMIN });
+  assert.equal(adminView.data.attachments.length, 2);
+
+  // Rejections: disguised file, too many files; nothing is stored
+  const StoredFile = (await import('../models/StoredFile.js')).default;
+  const before = await StoredFile.countDocuments({ kind: 'complaint-attachment' });
+  const bad = await upload('/api/complaints', {
+    as: 'voter_2',
+    fields: { category: 'OTHER', subject: 's', description: 'd' },
+    files: [{ field: 'attachments', data: Buffer.from('<html><script>alert(1)</script>'), type: 'image/png', name: 'x.png' }],
+  });
+  assert.equal(bad.status, 400);
+  const tooMany = await upload('/api/complaints', {
+    as: 'voter_2',
+    fields: { category: 'OTHER', subject: 's', description: 'd' },
+    files: Array.from({ length: 4 }, (_, i) => ({ field: 'attachments', data: PNG, type: 'image/png', name: `${i}.png` })),
+  });
+  assert.equal(tooMany.status, 400);
+  assert.equal(await StoredFile.countDocuments({ kind: 'complaint-attachment' }), before);
+  // Multipart text fields are sanitized too
+  const injected = await upload('/api/complaints', { as: 'voter_2', fields: { 'category[$ne]': 'x', subject: 's', description: 'd' } });
+  assert.equal(injected.status, 400);
+});
+
+test('failed result emails: admin-only list grouped by election', { skip }, async () => {
+  const ResultEmailDelivery = (await import('../models/ResultEmailDelivery.js')).default;
+  await ResultEmailDelivery.updateOne({ election: state.electionId, clerkId: 'voter_3' }, { $set: { status: 'FAILED', lastError: 'SMTP 550', lastAttemptAt: new Date() } });
+  assert.equal((await api('GET', '/api/admin/result-emails/failed', { as: OFFICER })).status, 403);
+  const res = await api('GET', '/api/admin/result-emails/failed', { as: ADMIN });
+  assert.equal(res.status, 200);
+  const group = res.data.find((g) => g.electionId === state.electionId);
+  assert.equal(group.title, 'MIT Student Council Election 2026');
+  assert.equal(group.failures.length, 1);
+  assert.equal(group.failures[0].email, voterEmail('voter_3'));
+  assert.equal(group.sentCount, 2);
+});

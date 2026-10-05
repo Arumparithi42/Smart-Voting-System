@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { PlusCircle, Trash2, ChevronRight } from "lucide-react";
 import axiosInstance from "../utils/axiosInstance";
 
@@ -12,7 +12,6 @@ export default function ElectionDetail() {
     party: "",
     description: ""
   });
-  const navigate = useNavigate();
   const { id } = useParams();
   const [refresh, setRefresh] = useState(false);
   const [electionId, setElectionId] = useState('');
@@ -80,12 +79,9 @@ export default function ElectionDetail() {
     }
   };
 
-  const handleRedirectToElections = () => {
-    navigate("/dashboard/elections");
-  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-gray-800 lg:ml-64">
+    <div className="min-h-screen bg-slate-50 text-gray-800">
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-[#1e3a8a] mb-4 text-center">{election?.title}</h1>
         <p className="text-lg text-gray-600 mb-8 text-center max-w-2xl mx-auto">
@@ -188,15 +184,6 @@ export default function ElectionDetail() {
           </div>
         )}
 
-        <div className="mt-8 text-center">
-          <button
-            onClick={handleRedirectToElections}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Back
-            
-          </button>
-        </div>
       </main>
     </div>
   );

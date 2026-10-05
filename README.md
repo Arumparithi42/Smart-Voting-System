@@ -57,8 +57,10 @@ Voter ──complaint──▶ Admin (respond / resolve / reject)
 | **Reminder notifications** | Bell icon (top bar / header), Dashboard → Notifications | Server-side scheduler: starts within 24 h, starts within 1 h, voting open, closing within 1 h (only voters who haven't voted), voting closed. Also results published and complaint updates. Never duplicated (unique per user + reminder). Includes mark read and mark all read. |
 | **Result publication + email** | Admin → Manage Elections → Review & Publish | Only voters who actually voted are emailed, with aggregate results only. Duplicate-proof, with failed-delivery retry. Ties are reported as "Result: Tie". |
 | **Election Officer** | Officer dashboard | Proposes elections, monitors approved ones (status, turnout, hourly participation), manages candidates only before voting starts, reviews final results and recommends publication. Cannot create elections, publish results or see votes. |
-| **Profile** | Dashboard → Profile | Display name, bio and photo URL are editable. Voter ID, registered email and masked phone are read-only. Aadhaar, OTPs and passwords are never returned. |
-| **Complaints** | Dashboard → My Complaints / Admin → Complaints | Go directly to the Admin with a reference ID (e.g. `CMP-2026-00124`). Visible only to the author and Admins. |
+| **Profile** | Dashboard → Profile | Display name, bio and photo are editable. Voter ID, registered email and masked phone are read-only. Aadhaar, OTPs and passwords are never returned. |
+| **Complaints** | Dashboard → My Complaints / Admin → Complaints | Go directly to the Admin with a reference ID (e.g. `CMP-2026-00124`). Up to 3 screenshots/PDFs (5 MB each) can be attached. Complaints and their files are visible only to the author and Admins. |
+| **Profile photo** | Dashboard → Profile | Upload / change / remove a PNG, JPEG, GIF or WebP photo (2 MB). Shown on the profile and in the top bar. |
+| **Navigation** | Every page | Signed-in users get one layout everywhere (sidebar with Home / Elections / Dashboard + top bar with Back, notifications, profile); visitors get the public header with Back. Election lists have Upcoming / Ongoing / Past / Results Pending / Published tabs. |
 
 ## ⚙️ Configuration
 

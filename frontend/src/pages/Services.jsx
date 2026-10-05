@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Header from '../components/Header/Header';
 import Footer from '../components/Footer/Footer';
 import { useUser } from '@clerk/clerk-react';
 import { toast, ToastContainer } from 'react-toastify';
@@ -80,7 +79,6 @@ const Services = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Header/>
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="flex flex-col md:flex-row">

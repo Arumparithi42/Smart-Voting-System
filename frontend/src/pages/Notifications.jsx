@@ -25,7 +25,7 @@ export default function Notifications() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:ml-64">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="mx-auto max-w-3xl">
         <PageHeader
           title="Notifications"

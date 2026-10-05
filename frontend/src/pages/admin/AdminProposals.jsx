@@ -98,7 +98,7 @@ export default function AdminProposals() {
   const input = 'mt-1 px-3 py-2 w-full border border-gray-300 rounded-md';
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         <PageHeader title="Election Proposals" subtitle="Review proposals from Election Officers. Only approval creates an official election." />
 

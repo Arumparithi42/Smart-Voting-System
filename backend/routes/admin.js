@@ -34,6 +34,7 @@ import {
   publishResults,
   getResultEmailStatus,
   retryResultEmails,
+  getFailedResultEmails,
 } from '../controllers/resultPublicationController.js';
 import { requireAdmin } from '../middleware/auth.js';
 
@@ -80,6 +81,8 @@ router.post('/elections/:electionId/publish-results', publishResults);
 // Result email delivery status / retry failed deliveries
 router.get('/elections/:electionId/result-emails', getResultEmailStatus);
 router.post('/elections/:electionId/result-emails/retry', retryResultEmails);
+// All failed result-email deliveries across elections
+router.get('/result-emails/failed', getFailedResultEmails);
 
 // --- Election proposals from Election Officers ---
 router.get('/proposals', getProposals);

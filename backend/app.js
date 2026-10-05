@@ -72,6 +72,7 @@ import complaintRoutes from './routes/complaints.js';
 import notificationRoutes from './routes/notifications.js';
 import profileRoutes from './routes/profile.js';
 import chatbotRoutes from './routes/chatbot.js';
+import mediaRoutes from './routes/media.js';
 import { startNotificationScheduler } from './services/notificationService.js';
 import { verifyEmailSetup } from './services/emailService.js';
 
@@ -86,6 +87,7 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/media', mediaRoutes);
 
 // Base route
 app.get('/', (req, res) => {

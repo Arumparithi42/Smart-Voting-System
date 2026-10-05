@@ -60,7 +60,7 @@ export default function VoterHome() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:ml-64">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="mx-auto max-w-6xl space-y-8">
         <section className="rounded-2xl bg-gradient-to-r from-[#1E3A8A] via-blue-600 to-teal-500 p-6 text-white shadow-md sm:p-8">
           <h1 className="text-2xl font-bold sm:text-3xl">Welcome, {user?.firstName || 'Voter'}</h1>

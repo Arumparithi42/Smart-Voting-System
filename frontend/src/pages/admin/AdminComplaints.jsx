@@ -5,6 +5,7 @@ import { COMPLAINT_CATEGORIES, COMPLAINT_STATUS_STYLES, complaintCategoryLabel, 
 import StatusBadge from '../../components/StatusBadge';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import PageHeader from '../../components/ui/PageHeader';
+import { AttachmentList } from '../../components/complaints/Attachments';
 
 const STATUSES = ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED'];
 const FINAL = ['RESOLVED', 'REJECTED'];
@@ -67,7 +68,7 @@ export default function AdminComplaints() {
   const select = 'px-3 py-2 border rounded bg-white';
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         <PageHeader title="Complaints / Compliance" subtitle="Voter complaints come directly to Admins. Only the complainant and Admins can see them." />
 
@@ -99,7 +100,7 @@ export default function AdminComplaints() {
                   className={`p-4 border-b cursor-pointer hover:bg-gray-100 ${selected?._id === c._id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
                 >
                   <p className="font-mono text-sm text-gray-500">{c.referenceId}</p>
-                  <p className="font-bold text-gray-800">{c.subject}</p>
+                  <p className="font-bold text-gray-800">{c.subject}{c.attachments?.length > 0 && <span className="ml-2 text-xs font-normal text-slate-500">📎 {c.attachments.length}</span>}</p>
                   <p className="text-sm text-gray-600">{c.election?.title || 'General'} · {complaintCategoryLabel(c.category)}</p>
                   <div className="mt-2"><StatusBadge value={c.status} styles={COMPLAINT_STATUS_STYLES} /></div>
                 </li>
@@ -133,6 +134,12 @@ export default function AdminComplaints() {
                     </>
                   )}
                 </div>
+
+                {selected.attachments?.length > 0 && (
+                  <div className="bg-white p-4 rounded shadow-sm">
+                    <AttachmentList attachments={selected.attachments} />
+                  </div>
+                )}
 
                 {FINAL.includes(selected.status) ? (
                   <div className="bg-white p-4 rounded shadow-sm text-sm">

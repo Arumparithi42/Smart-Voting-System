@@ -22,7 +22,7 @@ export default function HelpSupportPage() {
   const visible = faqData.filter((f) => !q || `${f.question} ${f.answer}`.toLowerCase().includes(q));
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:ml-64">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="mx-auto max-w-3xl">
         <PageHeader title="Help & Support" subtitle="Answers to common questions about voting in the Smart Voting System." />
         <div className="relative mb-6">

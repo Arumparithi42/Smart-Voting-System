@@ -3,14 +3,15 @@ import { SignOutButton } from "@clerk/clerk-react";
 import { useState, useEffect, useCallback } from 'react';
 import {
    Bell, ClipboardList, FileCheck2, FilePlus2, Gauge, HelpCircle, Home, LayoutDashboard, LogOut,
-   MessageSquareWarning, ShieldCheck, UserCircle2, UserPlus, Users, Vote, X, BarChart3, IdCard,
+   MessageSquareWarning, MailWarning, ShieldCheck, UserCircle2, UserPlus, Users, Vote, X, BarChart3, IdCard,
 } from 'lucide-react';
 
-// Navigation per role. UX only - every permission is enforced by the backend.
+// Home / Elections / Dashboard are always the first three entries for every
+// role (rendered below), then the role's own sections. UX only - every
+// permission is enforced by the backend.
 const NAV = {
    user: [
       { section: 'Voting' },
-      { to: '/elections', label: 'Elections', icon: Vote },
       { to: '/dashboard/elections', label: 'Voting History', icon: ClipboardList },
       { to: '/verify-receipt', label: 'Verify Receipt', icon: ShieldCheck },
       { to: '/apply-candidate', label: 'Apply as Candidate', icon: UserPlus },
@@ -24,7 +25,6 @@ const NAV = {
       { section: 'Election Officer' },
       { to: '/dashboard/officer/proposals', label: 'Election Proposals', icon: FilePlus2 },
       { to: '/dashboard/officer/elections', label: 'Monitor Elections', icon: BarChart3 },
-      { to: '/elections', label: 'Public Elections', icon: Vote },
       { section: 'Account' },
       { to: '/dashboard/notifications', label: 'Notifications', icon: Bell },
       { to: '/dashboard/complaints', label: 'My Complaints', icon: MessageSquareWarning },
@@ -36,6 +36,7 @@ const NAV = {
       { to: '/dashboard/elections', label: 'Manage Elections', icon: Gauge },
       { to: '/dashboard/admin/proposals', label: 'Election Proposals', icon: FilePlus2 },
       { to: '/admin/candidate-applications', label: 'Candidate Applications', icon: FileCheck2 },
+      { to: '/dashboard/admin/result-emails', label: 'Result Emails', icon: MailWarning },
       { section: 'People' },
       { to: '/dashboard/admin/complaints', label: 'Complaints / Compliance', icon: MessageSquareWarning },
       { to: '/dashboard/admin/users', label: 'Officers & Users', icon: Users },
@@ -128,6 +129,11 @@ const SideBox = ({ isAdmin, role, open = false, onClose = () => {} }) => {
                <li>
                   <Link to="/" className={linkClass(location.pathname === '/')}>
                      <Home className="h-5 w-5 shrink-0" aria-hidden="true" /> Home
+                  </Link>
+               </li>
+               <li>
+                  <Link to="/elections" className={linkClass(location.pathname === '/elections')}>
+                     <Vote className="h-5 w-5 shrink-0" aria-hidden="true" /> Elections
                   </Link>
                </li>
                <li>

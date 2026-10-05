@@ -5,12 +5,17 @@ import axiosInstance from '../../utils/axiosInstance';
 import { formatDateTime } from '../../utils/labels';
 import ElectionStatusBadge from '../../components/ui/ElectionStatusBadge';
 import PageHeader from '../../components/ui/PageHeader';
+import StageTabs, { useStageFilter } from '../../components/ui/StageTabs';
+import { EMPTY_MESSAGES, filterByStage } from '../../utils/stageFilters';
+
+const TABS = ['all', 'upcoming', 'ongoing', 'past', 'pending', 'published'];
 
 // Election Officer: monitor official (admin-approved) elections. Status and
 // turnout only while voting is open; final aggregate results once it ends.
 export default function OfficerElections() {
   const [elections, setElections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stage, setStage] = useStageFilter(TABS);
 
   useEffect(() => {
     axiosInstance
@@ -21,17 +26,20 @@ export default function OfficerElections() {
   }, []);
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         <PageHeader title={<>Monitor Elections</>} subtitle={<>Status and turnout of official elections. Results can be reviewed once voting closes.</>} />
 
         {loading ? (
-          <p>Loading…</p>
+          <p className="py-10 text-center text-slate-500">Loading…</p>
         ) : elections.length === 0 ? (
           <div className="bg-white p-6 rounded shadow text-center text-gray-500">No elections yet.</div>
         ) : (
+          <>
+          <StageTabs elections={elections} allowed={TABS} value={stage} onChange={setStage} />
+          {filterByStage(elections, stage).length === 0 && <div className="bg-white p-6 rounded-xl shadow-sm text-center text-slate-500">{EMPTY_MESSAGES[stage]}</div>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {elections.map((e) => (
+            {filterByStage(elections, stage).map((e) => (
               <div key={e._id} className="bg-white rounded-lg shadow p-5">
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="text-lg font-semibold">{e.title}</h2>
@@ -59,6 +67,7 @@ export default function OfficerElections() {
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
     </div>

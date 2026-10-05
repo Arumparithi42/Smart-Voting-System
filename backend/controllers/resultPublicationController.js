@@ -223,3 +223,36 @@ export const retryResultEmails = async (req, res) => {
     res.status(500).json({ message: 'Error retrying result emails', error: error.message });
   }
 };
+
+// Every election that has failed result-email deliveries, with the failures
+// themselves - powers the admin "Failed Result Emails" page.
+export const getFailedResultEmails = async (req, res) => {
+  try {
+    const failed = await ResultEmailDelivery.find({ status: 'FAILED' })
+      .select('election email recipientName attempts lastError lastAttemptAt')
+      .sort({ lastAttemptAt: -1 })
+      .limit(1000);
+    const electionIds = [...new Set(failed.map((f) => String(f.election)))];
+    const [elections, sentCounts] = await Promise.all([
+      Election.find({ _id: { $in: electionIds } }).select('title resultsPublishedAt'),
+      ResultEmailDelivery.aggregate([
+        { $match: { election: { $in: electionIds.map((id) => new mongoose.Types.ObjectId(id)) }, status: 'SENT' } },
+        { $group: { _id: '$election', count: { $sum: 1 } } },
+      ]),
+    ]);
+    const sentBy = new Map(sentCounts.map((r) => [String(r._id), r.count]));
+    const byId = new Map(elections.map((e) => [String(e._id), e]));
+
+    res.status(200).json(electionIds.map((id) => ({
+      electionId: id,
+      title: byId.get(id)?.title || 'Deleted election',
+      resultsPublishedAt: byId.get(id)?.resultsPublishedAt,
+      sentCount: sentBy.get(id) || 0,
+      failures: failed.filter((f) => String(f.election) === id).map((f) => ({
+        _id: f._id, email: f.email, recipientName: f.recipientName, attempts: f.attempts, lastError: f.lastError, lastAttemptAt: f.lastAttemptAt,
+      })),
+    })));
+  } catch (error) {
+    res.status(500).json({ message: 'Error loading failed emails', error: error.message });
+  }
+};

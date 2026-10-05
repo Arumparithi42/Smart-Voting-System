@@ -4,7 +4,6 @@ import ElectionCountdown from '../components/ElectionCountdown';
 import { CheckCircle, ChevronRight, Copy, ShieldCheck, Loader2 } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUser } from "@clerk/clerk-react";
-import Header from '../components/Header/Header';
 import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
 import { useConfirm } from '../components/ui/ConfirmDialog';
 import { serverNow } from '../utils/serverClock';
@@ -239,7 +238,6 @@ export default function Vote() {
 
   return (
     <div className="app-ui min-h-screen bg-gradient-to-b from-yellow-50 to-white text-gray-800">
-      <Header />
       <main className="mx-auto max-w-5xl px-4 py-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-[#1e3a8a] mb-4 text-center">{title}</h1>
         <p className="text-lg text-gray-600 mb-8 text-center max-w-2xl mx-auto">

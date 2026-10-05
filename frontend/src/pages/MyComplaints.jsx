@@ -5,6 +5,7 @@ import { COMPLAINT_CATEGORIES, COMPLAINT_STATUS_STYLES, complaintCategoryLabel, 
 import StatusBadge from '../components/StatusBadge';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import PageHeader from '../components/ui/PageHeader';
+import { AttachmentList, AttachmentPicker } from '../components/complaints/Attachments';
 
 const emptyForm = { electionId: '', category: '', subject: '', description: '', supportingInfo: '' };
 
@@ -17,6 +18,7 @@ export default function MyComplaints() {
   const [complaints, setComplaints] = useState([]);
   const [submitted, setSubmitted] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [files, setFiles] = useState([]);
 
   const load = async () => {
     try {
@@ -40,10 +42,15 @@ export default function MyComplaints() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await axiosInstance.post('/api/complaints', { ...form, electionId: form.electionId || undefined });
+      // Multipart so screenshots/PDFs travel with the complaint.
+      const body = new FormData();
+      Object.entries(form).forEach(([key, value]) => { if (value) body.append(key, value); });
+      files.forEach((f) => body.append('attachments', f));
+      const res = await axiosInstance.post('/api/complaints', body);
       setSubmitted(res.data.referenceId);
       toast.success(res.data.message);
       setForm(emptyForm);
+      setFiles([]);
       load();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Could not submit complaint');
@@ -55,7 +62,7 @@ export default function MyComplaints() {
   const input = 'mt-1 px-3 py-2 w-full border border-gray-300 rounded-md';
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         <PageHeader title={<>Raise Complaint</>} subtitle={<>Report a problem or compliance issue. Complaints are sent directly to the Admin.</>} />
 
@@ -94,7 +101,8 @@ export default function MyComplaints() {
             Supporting information (optional)
             <textarea className={input} rows={2} value={form.supportingInfo} onChange={setField('supportingInfo')} maxLength={2000} placeholder="e.g. time of the issue, device/browser, error message" />
           </label>
-          <p className="text-xs text-gray-500">Please don&apos;t include your Aadhaar number, passwords or OTPs.</p>
+          <AttachmentPicker files={files} onChange={setFiles} />
+          <p className="text-xs text-gray-500">Please don&apos;t include your Aadhaar number, passwords or OTPs (also not in screenshots).</p>
           <button type="submit" disabled={submitting} className="px-4 py-2 bg-green-600 text-white rounded shadow hover:bg-green-700 disabled:bg-gray-400">
             Submit Complaint
           </button>
@@ -117,6 +125,7 @@ export default function MyComplaints() {
                   </div>
                   <StatusBadge value={c.status} styles={COMPLAINT_STATUS_STYLES} />
                 </div>
+                <AttachmentList attachments={c.attachments} />
                 {c.adminResponse && (
                   <p className="mt-3 text-sm bg-gray-50 border-l-4 border-blue-400 p-3">
                     <strong>Admin Response:</strong> {c.adminResponse}

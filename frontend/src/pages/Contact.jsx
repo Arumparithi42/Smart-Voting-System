@@ -1,11 +1,9 @@
 import React from 'react'
-import Header from '../components/Header/Header'
 import Footer from '../components/Footer/Footer'
 
 const Contact = () => {
   return (
     <div className="min-h-screen bg-gradient-to-r from-yellow-100 via-yellow-100 to-white">
-      <Header />
       <section className="py-12 px-4">
         <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
           <h2 className="text-3xl font-bold text-[#1E3A8A] text-center mb-4">Contact Us</h2>

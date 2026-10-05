@@ -16,7 +16,7 @@ import ElectionDetail from "../pages/ElectionDetail.jsx";
 import Vote from "../pages/Vote.jsx";
 import Result from '../pages/Result.jsx';
 import ElectionDetails from "../pages/ElectionDetails.jsx";
-import DashboardLayout from "../layouts/DashboardLayout.jsx";
+import AppShell from "../layouts/AppShell.jsx";
 import VerifyReceipt from "../pages/VerifyReceipt.jsx";
 import RequireAdmin from "./RequireAdmin.jsx";
 import VoterLogin from "../pages/VoterLogin.jsx";
@@ -27,9 +27,11 @@ import AdminApplications from "../pages/AdminApplications.jsx";
 const Routers = () => {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
       <Route path="/sign-in/*" element={<Signin />} />
       <Route path="/sign-up/*" element={<Signup />} />
+      {/* Every other page shares one layout (navigation never moves). */}
+      <Route element={<AppShell />}>
+      <Route path="/" element={<Home />} />
       <Route path="/elections" element={<Elections/>} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/gases" element={<Doctors />} />
@@ -38,7 +40,7 @@ const Routers = () => {
         path="/voter-registry"
         element={
           <RequireAdmin>
-            <DashboardLayout><VoterRegistry /></DashboardLayout>
+            <VoterRegistry />
           </RequireAdmin>
         }
       />
@@ -46,7 +48,7 @@ const Routers = () => {
         path="/createElection"
         element={
           <RequireAdmin>
-            <DashboardLayout><CreateElection /></DashboardLayout>
+            <CreateElection />
           </RequireAdmin>
         }
       />
@@ -54,7 +56,7 @@ const Routers = () => {
         path="/createELection"
         element={
           <RequireAdmin>
-            <DashboardLayout><CreateElection /></DashboardLayout>
+            <CreateElection />
           </RequireAdmin>
         }
       />
@@ -62,7 +64,7 @@ const Routers = () => {
         path="/elections/:id"
         element={
           <RequireAdmin>
-            <DashboardLayout><ElectionDetail /></DashboardLayout>
+            <ElectionDetail />
           </RequireAdmin>
         }
       />
@@ -73,13 +75,13 @@ const Routers = () => {
       <Route path="/verify-receipt" element={<VerifyReceipt/>} />
       <Route
         path="/apply-candidate"
-        element={<DashboardLayout><ApplyCandidate /></DashboardLayout>}
+        element={<ApplyCandidate />}
        />
       <Route
         path="/admin/candidate-applications"
         element={
           <RequireAdmin>
-            <DashboardLayout><AdminApplications /></DashboardLayout>
+            <AdminApplications />
           </RequireAdmin>
         }
       />
@@ -100,6 +102,7 @@ const Routers = () => {
         }
       />
       {/* <Route path="/doctors/:id" element={<DoctorDetails />} /> */}
+      </Route>
     </Routes>
   );
 };

@@ -30,6 +30,14 @@ const complaintSchema = new mongoose.Schema(
     subject: { type: String, required: true, trim: true, maxlength: 200 },
     description: { type: String, required: true, trim: true, maxlength: 5000 },
     supportingInfo: { type: String, trim: true, maxlength: 2000 },
+    // Screenshots / documents the voter attached (StoredFile, owner+admin only).
+    attachments: [{
+      _id: false,
+      fileId: { type: mongoose.Schema.Types.ObjectId, ref: 'StoredFile' },
+      filename: { type: String },
+      contentType: { type: String },
+      size: { type: Number },
+    }],
 
     status: { type: String, enum: COMPLAINT_STATUSES, default: 'OPEN' },
     adminResponse: { type: String, trim: true, maxlength: 5000 },

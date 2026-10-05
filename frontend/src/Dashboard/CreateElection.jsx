@@ -34,7 +34,7 @@ const CreateElection = () => {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-7xl mx-auto">
         <PageHeader title="Create Election" subtitle="Fill in the details to create a new election" />
 

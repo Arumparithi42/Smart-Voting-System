@@ -7,7 +7,6 @@ import LiveResults from '../pages/LiveResults';
 import RequireAdmin from '../routes/RequireAdmin';
 import RequireRole from '../routes/RequireRole';
 import useUserRole from '../hooks/useUserRole';
-import DashboardLayout from '../layouts/DashboardLayout';
 import MyComplaints from '../pages/MyComplaints';
 import Notifications from '../pages/Notifications';
 import ProfilePage from '../pages/ProfilePage';
@@ -18,6 +17,7 @@ import ElectionResultsReview from '../pages/ElectionResultsReview';
 import AdminProposals from '../pages/admin/AdminProposals';
 import AdminComplaints from '../pages/admin/AdminComplaints';
 import AdminUsers from '../pages/admin/AdminUsers';
+import FailedResultEmails from '../pages/admin/FailedResultEmails';
 import Error from '../error/Error';
 
 const UserDashboard = () => {
@@ -26,8 +26,7 @@ const UserDashboard = () => {
   const isAdmin = role === 'admin';
 
   return (
-    <DashboardLayout>
-      <Routes>
+    <Routes>
         <Route path="/" element={<MainDashBoard isAdmin={isAdmin} role={role} roleLoading={loading} />} />
         <Route path="/elections" element={<ElectionList isAdmin={isAdmin} />} />
         <Route path="/help" element={<HelpSupportPage />} />
@@ -53,10 +52,10 @@ const UserDashboard = () => {
         <Route path="/admin/proposals" element={<RequireAdmin><AdminProposals /></RequireAdmin>} />
         <Route path="/admin/complaints" element={<RequireAdmin><AdminComplaints /></RequireAdmin>} />
         <Route path="/admin/users" element={<RequireAdmin><AdminUsers /></RequireAdmin>} />
+        <Route path="/admin/result-emails" element={<RequireAdmin><FailedResultEmails /></RequireAdmin>} />
         <Route path="/admin/results/:electionId" element={<RequireAdmin><ElectionResultsReview mode="admin" /></RequireAdmin>} />
-        <Route path="*" element={<div className="p-8 lg:ml-64"><Error errMsg="Page not found." /></div>} />
-      </Routes>
-    </DashboardLayout>
+        <Route path="*" element={<div className="p-8"><Error errMsg="Page not found." /></div>} />
+    </Routes>
   );
 }
 

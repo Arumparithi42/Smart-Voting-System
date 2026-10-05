@@ -1,13 +1,8 @@
-import React from 'react'
 import Hero from '../components/Hero'
-import Header from '../components/Header/Header'
-import Footer from '../components/Footer/Footer'
-import { useNavigate } from 'react-router-dom'
 
 const Home = () => {
-  const navigate=useNavigate();
   return (
-    <div className=' max-h-screen overflow-hidden'>
+    <div>
       {/* <Header /> */}
       {/* Hero Section Start */}
       {/* <section className='heroSection pt-[40px] 2xl:h-[800px]'>

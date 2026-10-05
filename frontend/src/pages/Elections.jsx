@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { Search } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
-import Header from '../components/Header/Header';
 import ElectionCard from '../components/ElectionCard';
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
+import StageTabs, { useStageFilter } from '../components/ui/StageTabs';
+import { EMPTY_MESSAGES, filterByStage } from '../utils/stageFilters';
+
+const TABS = ['all', 'ongoing', 'upcoming', 'past'];
 
 const SECTIONS = [
   { key: 'ONGOING', title: 'Voting Open', empty: 'No elections are open for voting right now.' },
@@ -20,6 +23,7 @@ export default function Elections() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [stage, setStage] = useStageFilter(TABS);
 
   const load = useCallback(async () => {
     try {
@@ -49,7 +53,6 @@ export default function Elections() {
 
   return (
     <div className="app-ui min-h-screen bg-gradient-to-b from-yellow-50 to-white">
-      <Header />
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -65,8 +68,18 @@ export default function Elections() {
 
         {loading ? <LoadingState label="Loading elections…" /> : error ? <ErrorState message={error} onRetry={load} /> : elections.length === 0 ? (
           <EmptyState title="No elections yet." message="Elections appear here once the Admin schedules them." />
+        ) : stage !== 'all' ? (
+          <>
+            <StageTabs elections={visible} allowed={TABS} value={stage} onChange={setStage} />
+            {filterByStage(visible, stage).length === 0 ? <EmptyState title={q ? 'No matching elections.' : EMPTY_MESSAGES[stage]} /> : (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {filterByStage(visible, stage).map((e) => <ElectionCard key={e._id} election={e} hasVoted={voted[e._id]} onStageChange={load} />)}
+              </div>
+            )}
+          </>
         ) : (
           <div className="space-y-10">
+            <StageTabs elections={visible} allowed={TABS} value={stage} onChange={setStage} />
             {SECTIONS.map((section) => {
               const list = visible.filter((e) => e.lifecycleStage === section.key);
               if (!list.length && !section.empty) return null;

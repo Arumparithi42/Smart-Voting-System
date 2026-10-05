@@ -42,7 +42,7 @@ export default function AdminUsers() {
   );
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-5xl mx-auto">
         <PageHeader title="Officers & Users" subtitle="Election Officers can propose elections and monitor them. Only Admins can create elections and publish results." />
 

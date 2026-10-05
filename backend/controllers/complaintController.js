@@ -6,6 +6,8 @@ import Complaint, {
 } from '../models/Complaint.js';
 import Election from '../models/Election.js';
 import User from '../models/User.js';
+import StoredFile from '../models/StoredFile.js';
+import { detectFileType, IMAGE_TYPES, safeFilename, sendStoredFile } from '../middleware/upload.js';
 import { nextComplaintReference } from '../utils/counter.js';
 import { notifyComplaintUpdated } from '../services/notificationService.js';
 
@@ -23,6 +25,9 @@ const toVoterView = (complaint) => ({
   subject: complaint.subject,
   description: complaint.description,
   supportingInfo: complaint.supportingInfo,
+  attachments: (complaint.attachments || []).map((a) => ({
+    fileId: a.fileId, filename: a.filename, contentType: a.contentType, size: a.size,
+  })),
   status: complaint.status,
   adminResponse: complaint.adminResponse,
   respondedAt: complaint.respondedAt,
@@ -61,23 +66,51 @@ export const createComplaint = async (req, res) => {
       electionId = election._id;
     }
 
-    const referenceId = await nextComplaintReference();
-    const complaint = await Complaint.create({
-      referenceId,
-      clerkId: req.clerkId, // from the verified session, never the body
-      election: electionId,
-      category,
-      subject,
-      description,
-      supportingInfo,
-      status: 'OPEN',
-      statusHistory: [{ status: 'OPEN', changedAt: new Date() }],
-    });
+    // Validate every attachment by its real content before storing anything.
+    const files = req.files || [];
+    const detected = [];
+    for (const f of files) {
+      const type = detectFileType(f.buffer);
+      if (!type || !(IMAGE_TYPES.includes(type.type) || type.type === 'application/pdf')) {
+        return res.status(400).json({ message: `"${f.originalname}" is not a supported file. Attach PNG, JPEG, GIF, WebP images or PDFs.` });
+      }
+      detected.push(type);
+    }
+
+    const stored = await Promise.all(files.map((f, i) => StoredFile.create({
+      kind: 'complaint-attachment',
+      ownerClerkId: req.clerkId,
+      filename: safeFilename(f.originalname, detected[i].ext),
+      contentType: detected[i].type,
+      size: f.size,
+      data: f.buffer,
+    })));
+
+    let complaint;
+    try {
+      const referenceId = await nextComplaintReference();
+      complaint = await Complaint.create({
+        referenceId,
+        clerkId: req.clerkId, // from the verified session, never the body
+        election: electionId,
+        category,
+        subject,
+        description,
+        supportingInfo,
+        attachments: stored.map((f) => ({ fileId: f._id, filename: f.filename, contentType: f.contentType, size: f.size })),
+        status: 'OPEN',
+        statusHistory: [{ status: 'OPEN', changedAt: new Date() }],
+      });
+    } catch (error) {
+      // Don't leave orphaned uploads behind if the complaint wasn't saved.
+      await StoredFile.deleteMany({ _id: { $in: stored.map((f) => f._id) } }).catch(() => {});
+      throw error;
+    }
     await complaint.populate('election', 'title');
 
     res.status(201).json({
       message: 'Your complaint has been submitted to the Admin.',
-      referenceId,
+      referenceId: complaint.referenceId,
       complaint: toVoterView(complaint),
     });
   } catch (error) {
@@ -232,5 +265,27 @@ export const updateComplaint = async (req, res) => {
     res.status(200).json({ message: 'Complaint updated.', complaint: withComplainant });
   } catch (error) {
     res.status(500).json({ message: 'Error updating complaint', error: error.message });
+  }
+};
+
+export const COMPLAINT_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+export const COMPLAINT_MAX_ATTACHMENTS = 3;
+
+// Download one attachment. Only the complainant who uploaded it, or an
+// admin, may read it - Election Officers and other voters get 404.
+export const getComplaintAttachment = async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(fileId)) return res.status(404).json({ message: 'File not found' });
+    const file = await StoredFile.findOne({ _id: fileId, kind: 'complaint-attachment' });
+    if (!file) return res.status(404).json({ message: 'File not found' });
+
+    if (file.ownerClerkId !== req.clerkId) {
+      const user = await User.findOne({ clerkId: req.clerkId }).select('role');
+      if (user?.role !== 'admin') return res.status(404).json({ message: 'File not found' });
+    }
+    sendStoredFile(res, file);
+  } catch (error) {
+    res.status(500).json({ message: 'Error loading file', error: error.message });
   }
 };

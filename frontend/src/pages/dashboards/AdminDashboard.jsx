@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarClock, FileCheck2, FilePlus2, IdCard, MailWarning, MessageSquareWarning, PlusCircle, Trophy, Users, Vote } from 'lucide-react';
+import { Archive, CalendarClock, FileCheck2, FilePlus2, IdCard, MailWarning, MessageSquareWarning, PlusCircle, Trophy, Users, Vote } from 'lucide-react';
 import axiosInstance from '../../utils/axiosInstance';
 import PageHeader from '../../components/ui/PageHeader';
 import StatCard from '../../components/ui/StatCard';
@@ -21,7 +21,7 @@ export default function AdminDashboard() {
   const s = summary || { elections: {} };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:ml-64">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="mx-auto max-w-6xl">
         <PageHeader
           title="Admin Dashboard"
@@ -31,11 +31,20 @@ export default function AdminDashboard() {
         {error ? <ErrorState message={error} onRetry={load} /> : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard loading={loading} label="Pending Proposals" value={s.pendingProposals} icon={FilePlus2} to="/dashboard/admin/proposals" hint="From Election Officers" />
-            <StatCard loading={loading} label="Upcoming Elections" value={s.elections.UPCOMING} icon={CalendarClock} to="/dashboard/elections" hint={s.elections.DRAFT ? `${s.elections.DRAFT} draft(s) to schedule` : 'Scheduled'} />
-            <StatCard loading={loading} label="Ongoing Elections" value={s.elections.ONGOING} icon={Vote} to="/dashboard/elections" hint="Voting open" />
-            <StatCard loading={loading} label="Results Pending" value={s.resultsPending} icon={Trophy} to="/dashboard/elections" hint="Ended, awaiting publication" />
+            <StatCard loading={loading} label="Upcoming Elections" value={s.elections.UPCOMING} icon={CalendarClock} to="/dashboard/elections?stage=upcoming" hint="Scheduled, not started yet" />
+            <StatCard loading={loading} label="Ongoing Elections" value={s.elections.ONGOING} icon={Vote} to="/dashboard/elections?stage=ongoing" hint="Voting open now" />
+            <StatCard loading={loading} label="Past Elections" value={(s.elections.ENDED || 0) + (s.elections.RESULTS_PUBLISHED || 0)} icon={Archive} to="/dashboard/elections?stage=past" hint="Closed and published" />
+            <div className="flex flex-col gap-2">
+              <StatCard loading={loading} label="Results Pending" value={s.resultsPending} icon={Trophy} to="/dashboard/elections?stage=pending" hint="Ended, awaiting publication" />
+              <Link to="/dashboard/elections?stage=published" className="rounded-lg px-3 py-1.5 text-center text-sm font-semibold text-blue-700 ring-1 ring-slate-200 hover:bg-white">
+                View published results ({s.elections.RESULTS_PUBLISHED ?? 0})
+              </Link>
+            </div>
             <StatCard loading={loading} label="Open Complaints" value={s.openComplaints} icon={MessageSquareWarning} to="/dashboard/admin/complaints" hint="Open or under review" />
-            <StatCard loading={loading} label="Failed Result Emails" value={s.failedResultEmails} icon={MailWarning} to="/dashboard/elections" hint="Retry from the election's results page" />
+            <StatCard loading={loading} label="Failed Result Emails" value={s.failedResultEmails} icon={MailWarning} to="/dashboard/admin/result-emails" hint="Review and retry deliveries" />
+            {s.elections.DRAFT > 0 && (
+              <StatCard loading={loading} label="Draft Elections" value={s.elections.DRAFT} icon={FilePlus2} to="/dashboard/elections?stage=draft" hint="Approved, waiting to be scheduled" />
+            )}
           </div>
         )}
 

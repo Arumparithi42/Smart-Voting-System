@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import AvatarCom from '../AvatarCom';
 import NotificationBell from '../notifications/NotificationBell';
+import BackButton from '../ui/BackButton';
 
 const LINKS = [
   { to: '/', label: 'Home' },
@@ -24,10 +25,13 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-yellow-200/60 bg-gradient-to-r from-yellow-100 via-yellow-50 to-white/95 backdrop-blur">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6" aria-label="Main">
-        <Link to="/" className="flex items-center gap-2">
-          <Vote className="h-8 w-8 text-blue-900" aria-hidden="true" />
-          <span className="text-2xl font-bold text-blue-900">eVote</span>
-        </Link>
+        <div className="flex items-center gap-1">
+          <BackButton className="text-blue-900 hover:bg-yellow-200/60" />
+          <Link to="/" className="flex items-center gap-2">
+            <Vote className="h-8 w-8 text-blue-900" aria-hidden="true" />
+            <span className="text-2xl font-bold text-blue-900">eVote</span>
+          </Link>
+        </div>
         <div className="hidden items-center gap-1 md:flex">
           {links.map((l) => <Link key={l.to} to={l.to} className={linkClass(l.to)}>{l.label}</Link>)}
         </div>

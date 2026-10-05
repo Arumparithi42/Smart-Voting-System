@@ -9,6 +9,11 @@ import ElectionCountdown from "../components/ElectionCountdown";
 import { useConfirm } from "../components/ui/ConfirmDialog";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { formatDateTime } from "../utils/electionStages";
+import StageTabs, { useStageFilter } from "../components/ui/StageTabs";
+import { EMPTY_MESSAGES, filterByStage } from "../utils/stageFilters";
+
+const ADMIN_TABS = ["all", "draft", "upcoming", "ongoing", "past", "pending", "published"];
+const VOTER_TABS = ["all", "ongoing", "past"];
 
 // Admins: manage every election (incl. drafts). Voters: their voting
 // history - elections they took part in (never which candidate).
@@ -18,6 +23,8 @@ const ElectionList = ({ isAdmin }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const tabs = isAdmin ? ADMIN_TABS : VOTER_TABS;
+  const [stage, setStage] = useStageFilter(tabs);
 
   const load = useCallback(async () => {
     try {
@@ -85,7 +92,7 @@ const ElectionList = ({ isAdmin }) => {
   const btn = "rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50";
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:ml-64">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="mx-auto max-w-7xl">
         <PageHeader
           title={isAdmin ? "Manage Elections" : "Voting History"}
@@ -97,15 +104,19 @@ const ElectionList = ({ isAdmin }) => {
           )}
         />
 
-        {loading ? <LoadingState label="Loading elections…" /> : error ? <ErrorState message={error} onRetry={load} /> : elections.length === 0 ? (
+        {!loading && !error && elections.length > 0 && (
+          <StageTabs elections={elections} allowed={tabs} value={stage} onChange={setStage} />
+        )}
+
+        {loading ? <LoadingState label="Loading elections…" /> : error ? <ErrorState message={error} onRetry={load} /> : filterByStage(elections, stage).length === 0 ? (
           <EmptyState
             icon={ClipboardList}
-            title={isAdmin ? "No elections found." : "You haven't voted in any election yet."}
+            title={elections.length === 0 && !isAdmin ? "You haven't voted in any election yet." : EMPTY_MESSAGES[stage]}
             action={!isAdmin && <Link to="/elections" className="rounded-lg bg-[#1E3A8A] px-4 py-2 text-sm font-semibold text-white">Browse elections</Link>}
           />
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {elections.map((election) => {
+            {filterByStage(elections, stage).map((election) => {
               const stage = election.lifecycleStage;
               const busy = busyId === election._id;
               return (

@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { CalendarDays, CheckCircle2, Info, ShieldCheck, Trophy, UserRound, Vote, X } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
-import Header from '../components/Header/Header';
 import ElectionCountdown from '../components/ElectionCountdown';
 import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
 import { ErrorState, LoadingState } from '../components/ui/States';
@@ -72,9 +71,7 @@ export default function ElectionDetails() {
 
   return (
     <div className="app-ui min-h-screen bg-gradient-to-b from-yellow-50 to-white">
-      <Header />
       <main className="mx-auto max-w-5xl px-4 pb-16 pt-8 sm:px-6">
-        <Link to="/elections" className="text-sm font-semibold text-blue-700 hover:underline">← All elections</Link>
         {error ? <ErrorState className="mt-6" message={error} onRetry={error.startsWith('Unable') ? load : undefined} />
           : !election ? <LoadingState label="Loading election…" /> : (
             <div className="mt-4 space-y-6">

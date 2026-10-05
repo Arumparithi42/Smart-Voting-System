@@ -43,7 +43,7 @@ export default function LiveResults() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 lg:ml-64">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <p className="text-gray-500">Loading live results...</p>
       </div>
     );
@@ -51,7 +51,7 @@ export default function LiveResults() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 lg:ml-64">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <ShieldAlert className="w-10 h-10 text-red-500 mx-auto mb-2" />
           <p className="text-red-600">{error}</p>
@@ -86,7 +86,7 @@ export default function LiveResults() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 lg:ml-64">
+    <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white rounded-lg shadow-lg p-8 mb-8">
           <div className="flex items-center justify-between">

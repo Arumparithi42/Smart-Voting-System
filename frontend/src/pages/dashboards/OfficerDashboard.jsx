@@ -53,7 +53,7 @@ export default function OfficerDashboard() {
   const awaitingRecommendation = byStage('ENDED').filter((e) => !e.publicationRecommended);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:ml-64">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="mx-auto max-w-6xl">
         <PageHeader
           title="Election Officer Dashboard"
@@ -65,8 +65,8 @@ export default function OfficerDashboard() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label="Pending Proposals" value={proposals.filter((p) => p.status === 'PENDING').length} icon={Hourglass} to="/dashboard/officer/proposals" hint={`${proposals.filter((p) => p.status === 'REVISION_REQUESTED').length} need revision`} />
               <StatCard label="Approved Elections" value={proposals.filter((p) => p.status === 'APPROVED').length} icon={CheckCircle2} to="/dashboard/officer/proposals" />
-              <StatCard label="Ongoing Elections" value={byStage('ONGOING').length} icon={Vote} to="/dashboard/officer/elections" />
-              <StatCard label="Completed Elections" value={byStage('ENDED', 'RESULTS_PUBLISHED').length} icon={ClipboardCheck} to="/dashboard/officer/elections" />
+              <StatCard label="Ongoing Elections" value={byStage('ONGOING').length} icon={Vote} to="/dashboard/officer/elections?stage=ongoing" />
+              <StatCard label="Completed Elections" value={byStage('ENDED', 'RESULTS_PUBLISHED').length} icon={ClipboardCheck} to="/dashboard/officer/elections?stage=past" />
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-2">

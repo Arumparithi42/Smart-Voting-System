@@ -49,7 +49,7 @@ export default function VoterRegistry() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 lg:ml-64">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md p-8 border border-gray-200">
         <div className="flex items-center gap-2 mb-1">
           <Database className="w-6 h-6 text-[#1e3a8a]" />

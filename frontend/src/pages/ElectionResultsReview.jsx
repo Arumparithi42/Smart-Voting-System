@@ -86,12 +86,9 @@ export default function ElectionResultsReview({ mode }) {
     }
   };
 
-  const backLink = isAdmin ? '/dashboard/elections' : '/dashboard/officer/elections';
-
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-8 lg:ml-64">
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-5xl mx-auto">
-        <Link to={backLink} className="text-blue-600 hover:underline text-sm">← Back</Link>
 
         {error && <div className="mt-4 bg-white p-6 rounded shadow text-gray-700">{error}</div>}
 

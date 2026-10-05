@@ -45,7 +45,7 @@ const MyOrder = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 lg:ml-64">
+    <div className="bg-gray-50 min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
         <div className="bg-gradient-to-r from-blue-500 to-teal-400 text-white rounded-lg shadow-lg p-8 mb-8">
           <h1 className="text-3xl font-bold">Your Recent Bookings 👋</h1>
