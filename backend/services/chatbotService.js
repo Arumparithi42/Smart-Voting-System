@@ -319,7 +319,7 @@ const INTENTS = [
     name: 'officer',
     test: /election officer|officer/i,
     answer: () => 'An Election Officer proposes elections (name, dates, candidates, notes) and monitors them once approved. '
-      + 'They cannot create official elections, publish results or see votes - the Admin approves proposals and publishes results.',
+      + 'They can watch live vote totals, but cannot create official elections, publish results, change votes or see who anyone voted for - the Admin approves proposals and publishes results.',
   },
   {
     name: 'notifications',

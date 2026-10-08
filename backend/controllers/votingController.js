@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import VoterIdentity from '../models/VoterIdentity.js';
 import { getEffectiveElectionStatus, getElectionLifecycleStage } from '../utils/electionStatus.js';
 import { buildResultSummary } from '../utils/electionResults.js';
+import { buildReceiptPdf } from '../services/receiptPdfService.js';
 
 // These endpoints are public, but staff (officers/admins) additionally see
 // DRAFT elections. Role always comes from our DB, never the request.
@@ -26,7 +27,7 @@ const isStaffRequest = async (req) => {
 // fields, and no vote counts / winner / turnout until results are
 // officially published (running tallies mid-election can bias turnout,
 // and unpublished final results are for staff review only).
-const toPublicElection = (election) => {
+const toPublicElection = (election, { isStaff = false } = {}) => {
     const {
         voters,
         publicationRecommendation,
@@ -46,6 +47,13 @@ const toPublicElection = (election) => {
         });
     }
 
+    // Candidate documents: everyone sees manifestos; other documents are
+    // listed only for staff (admins / Election Officers).
+    obj.candidates = (obj.candidates || []).map((c) => {
+        if (!c || typeof c !== 'object' || !Array.isArray(c.documents)) return c;
+        return { ...c, documents: isStaff ? c.documents : c.documents.filter((d) => d.docType === 'MANIFESTO') };
+    });
+
     return {
         ...obj,
         effectiveStatus: getEffectiveElectionStatus(election),
@@ -56,7 +64,8 @@ const toPublicElection = (election) => {
 // Get all elections
 export const getAllElections = async (req, res) => {
     try {
-      const filter = (await isStaffRequest(req)) ? {} : { status: { $ne: 'draft' } };
+      const isStaff = await isStaffRequest(req);
+      const filter = isStaff ? {} : { status: { $ne: 'draft' } };
       const elections = await Election.find(filter)
         .select('-voters') // never expose voter identities/receipts publicly
         .populate({
@@ -64,11 +73,48 @@ export const getAllElections = async (req, res) => {
           select: 'name partyName votes', 
         });
         
-      res.status(200).json(elections.map(toPublicElection));
+      res.status(200).json(elections.map((e) => toPublicElection(e, { isStaff })));
     } catch (error) {
       res.status(500).json({ message: 'Error retrieving elections', error: error.message });
     }
   };
+
+
+// Home page: elections the admin chose to show there, split into ongoing
+// and upcoming (stored UTC times; the client shows a live countdown).
+export const getHomeElections = async (req, res) => {
+    try {
+      const elections = await Election.find({
+        showOnHomePage: true,
+        status: { $ne: 'draft' },
+        endTime: { $gt: new Date() },
+      })
+        .select('title description category startTime endTime status resultsPublished candidates')
+        .sort({ startTime: 1 })
+        .limit(24);
+
+      const view = (e) => ({
+        _id: e._id,
+        title: e.title,
+        description: e.description,
+        category: e.category,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        status: e.status,
+        resultsPublished: e.resultsPublished,
+        candidateCount: e.candidates.length,
+        effectiveStatus: getEffectiveElectionStatus(e),
+        lifecycleStage: getElectionLifecycleStage(e),
+      });
+      const all = elections.map(view);
+      res.status(200).json({
+        ongoing: all.filter((e) => e.lifecycleStage === 'ONGOING'),
+        upcoming: all.filter((e) => e.lifecycleStage === 'UPCOMING'),
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Error retrieving home page elections', error: error.message });
+    }
+};
 
 
 // Get election by election ID
@@ -83,11 +129,12 @@ export const getElectionById = async (req, res) => {
         .select('-voters') // never expose voter identities/receipts publicly
         .populate('candidates');
 
-      if (!election || (election.status === 'draft' && !(await isStaffRequest(req)))) {
+      const isStaff = await isStaffRequest(req);
+      if (!election || (election.status === 'draft' && !isStaff)) {
         return res.status(404).json({ message: 'Election not found' });
       }
       
-      res.status(200).json(toPublicElection(election));
+      res.status(200).json(toPublicElection(election, { isStaff }));
     } catch (error) {
       res.status(500).json({ message: 'Error retrieving election', error: error.message });
     }
@@ -257,6 +304,40 @@ export const getMyVoteStatus = async (req, res) => {
 };
 
 
+// Downloadable PDF receipt for the signed-in voter's OWN vote. Only the
+// voter record matching req.clerkId is read; it holds the receipt ID and
+// time, never the candidate.
+export const downloadMyReceiptPdf = async (req, res) => {
+    try {
+        const { electionId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(electionId)) {
+            return res.status(404).json({ message: 'Election not found' });
+        }
+        const election = await Election.findOne(
+            { _id: electionId, 'voters.clerkId': req.clerkId },
+            { title: 1, description: 1, startTime: 1, endTime: 1, 'voters.$': 1 }
+        );
+        if (!election) {
+            return res.status(404).json({ message: 'No vote found for you in this election.' });
+        }
+        const voter = election.voters[0];
+        const user = await User.findOne({ clerkId: req.clerkId }).select('firstName lastName');
+        const pdf = await buildReceiptPdf({
+            election,
+            voterName: user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : null,
+            receiptId: voter.receiptId,
+            votedAt: voter.votedAt,
+        });
+        const safeTitle = election.title.replace(/[^\w-]+/g, '_').slice(0, 60);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="vote-receipt-${safeTitle}.pdf"`);
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.end(pdf);
+    } catch (error) {
+        res.status(500).json({ message: 'Error generating receipt', error: error.message });
+    }
+};
+
 // Public results of an election. Available ONLY after an admin has
 // officially published them (see resultPublicationController.publishResults)
 // - ending the election alone is no longer enough. Aggregate counts only.
@@ -294,34 +375,48 @@ export const getElectionResults = async (req, res) => {
 };
 
 
+// Live (running) tallies for staff: admins and Election Officers. Aggregate
+// counts only - no voter identities. Public results stay locked until an
+// admin publishes them.
 export const getLiveResults = async (req, res) => {
     try {
         const { electionId } = req.params;
-        const election = await Election.findById(electionId).populate({
-            path: 'candidates',
-            select: 'name partyName votes',
-        });
+        if (!mongoose.Types.ObjectId.isValid(electionId)) {
+            return res.status(404).json({ message: 'Election not found' });
+        }
+        const election = await Election.findById(electionId)
+            .select('title description startTime endTime status resultsPublished candidates voters.votedAt')
+            .populate({ path: 'candidates', select: 'name partyName votes' });
 
         if (!election) {
             return res.status(404).json({ message: 'Election not found' });
         }
-        
-        const effectiveStatus = getEffectiveElectionStatus(election);
 
-        const totalVotes = election.voters.length;
+        const effectiveStatus = getEffectiveElectionStatus(election);
         const eligibleVoters = await VoterIdentity.countDocuments();
-        const results = election.candidates.map(candidate => ({
-            name: candidate.name,
-            partyName: candidate.partyName,
-            votes: candidate.votes,
-        }));
+        const candidateTotal = election.candidates.reduce((sum, c) => sum + (c?.votes || 0), 0);
+        const results = election.candidates.filter(Boolean)
+            .map((candidate) => ({
+                candidateId: candidate._id,
+                name: candidate.name,
+                partyName: candidate.partyName,
+                votes: candidate.votes,
+                percentage: candidateTotal > 0 ? Math.round((candidate.votes / candidateTotal) * 1000) / 10 : 0,
+            }))
+            .sort((a, b) => b.votes - a.votes);
 
         res.status(200).json({
+            electionId: election._id,
             electionTitle: election.title,
             status: effectiveStatus,
-            totalVotes,
+            lifecycleStage: getElectionLifecycleStage(election),
+            startTime: election.startTime,
+            endTime: election.endTime,
+            totalVotes: election.voters.length,
             eligibleVoters,
+            turnoutPercentage: eligibleVoters > 0 ? Math.round((election.voters.length / eligibleVoters) * 1000) / 10 : 0,
             results,
+            updatedAt: new Date(),
         });
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving live results', error: error.message });

@@ -1,11 +1,20 @@
 import express from 'express';
-import { castVote, getAllElections, getElectionById, getElectionResults, verifyReceipt, getMyVoteStatus } from '../controllers/votingController.js';
+import { castVote, getAllElections, getElectionById, getElectionResults, verifyReceipt, getMyVoteStatus, downloadMyReceiptPdf, getHomeElections } from '../controllers/votingController.js';
+import { getCandidateDocument, getElectionManifest } from '../controllers/documentController.js';
 import { checkAdminStatus } from '../controllers/userController.js';
 import { requireAuth, requireVoterVerified } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/elections', getAllElections);
+
+// Elections the admin chose to feature on the home page (ongoing + upcoming).
+router.get('/home-elections', getHomeElections);
+
+// Election manifest (public) and candidate documents (manifestos public,
+// other documents staff-only).
+router.get('/elections/:id/manifest', getElectionManifest);
+router.get('/candidates/documents/:fileId', getCandidateDocument);
 
 router.get('/elections/:id', getElectionById);
 
@@ -19,6 +28,9 @@ router.post('/elections/:electionId/candidates/:candidateId/vote', requireAuth, 
 // Lets the signed-in user check (and re-view) their own vote status/receipt
 // for an election, before rendering the ballot.
 router.get('/elections/:electionId/my-vote-status', requireAuth, getMyVoteStatus);
+
+// The signed-in voter's own receipt as a PDF (never contains the choice).
+router.get('/elections/:electionId/my-receipt.pdf', requireAuth, downloadMyReceiptPdf);
 
 router.get('/elections/:electionId/results', getElectionResults);
 

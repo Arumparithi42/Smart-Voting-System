@@ -6,6 +6,17 @@ const electionSchema = new mongoose.Schema(
     description: { type: String },
     purpose: { type: String },
     category: { type: String },
+    // Admin's "Show this election on the home page" choice. Only UPCOMING /
+    // ONGOING elections with this set appear in the home page sections.
+    showOnHomePage: { type: Boolean, default: false },
+    // Election-level manifest / notice (PDF or image), public with the election.
+    manifest: {
+      fileId: { type: mongoose.Schema.Types.ObjectId, ref: 'StoredFile' },
+      filename: { type: String },
+      contentType: { type: String },
+      size: { type: Number },
+      uploadedAt: { type: Date },
+    },
     candidates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Candidate' }], // Array of candidate IDs
     // 'draft' = created by an admin (e.g. from an approved proposal) but not
     // yet scheduled - hidden from voters and never open for voting, whatever

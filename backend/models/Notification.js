@@ -7,6 +7,16 @@ export const NOTIFICATION_TYPES = [
   'ELECTION_ENDED',
   'RESULTS_PUBLISHED',
   'COMPLAINT_UPDATED',
+  // Admin <-> Election Officer workflow
+  'PROPOSAL_SUBMITTED',
+  'PROPOSAL_REVISION_REQUESTED',
+  'PROPOSAL_APPROVED',
+  'PROPOSAL_REJECTED',
+  // Admin inbox
+  'COMPLAINT_SUBMITTED',
+  'FEEDBACK_SUBMITTED',
+  // Replies to the user
+  'FEEDBACK_UPDATED',
 ];
 
 // In-app notification for one user. Never carries ballot data - only

@@ -15,7 +15,7 @@ const loadElection = async (req, res) => {
   }
   const election = await Election.findById(electionId)
     .select('-voters.clerkId -voters.receiptId')
-    .populate('candidates', 'name partyName about profilePhotoUrl partySymbolUrl');
+    .populate('candidates', 'name partyName about profilePhotoUrl partySymbolUrl documents');
   if (!election) {
     res.status(404).json({ message: 'Election not found' });
     return null;
@@ -45,6 +45,7 @@ export const getOfficerElection = async (req, res) => {
       resultsPublishedAt: election.resultsPublishedAt,
       publicationRecommended: !!election.publicationRecommendation?.recommendedAt,
       fromProposal: !!election.proposalId,
+      manifest: election.manifest?.fileId ? election.manifest : null,
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching election', error: error.message });

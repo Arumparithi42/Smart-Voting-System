@@ -7,6 +7,7 @@
 import Election from '../models/Election.js';
 import Notification from '../models/Notification.js';
 import VoterIdentity from '../models/VoterIdentity.js';
+import User from '../models/User.js';
 
 const HOUR = 60 * 60 * 1000;
 // Don't announce "started"/"ended" for elections that changed state long
@@ -141,6 +142,82 @@ export const notifyComplaintUpdated = async (complaint) => notifyUsers([complain
   title: `Complaint ${complaint.referenceId} updated`,
   message: `Your complaint "${complaint.subject}" is now ${complaint.status.replace('_', ' ').toLowerCase()}.`,
   link: '/dashboard/complaints',
+});
+
+// ---- Workflow notifications (admins / officers / feedback) ----
+
+const adminClerkIds = async () => (await User.find({ role: 'admin' }).select('clerkId')).map((u) => u.clerkId);
+
+// New or resubmitted Election Officer proposal -> every admin.
+export const notifyProposalSubmitted = async (proposal, { resubmitted = false } = {}) => {
+  const officer = await User.findById(proposal.proposedBy).select('firstName lastName');
+  const who = officer ? `${officer.firstName} ${officer.lastName || ''}`.trim() : 'An Election Officer';
+  return notifyUsers(await adminClerkIds(), {
+    stageKey: `proposal-submitted:${proposal._id}:${new Date(proposal.updatedAt).getTime()}`,
+    type: 'PROPOSAL_SUBMITTED',
+    title: resubmitted ? 'Revised Election Request Submitted' : 'New Election Request Submitted',
+    message: resubmitted
+      ? `${who} revised and resubmitted the election request "${proposal.title}". Please review it.`
+      : `${who} submitted a new election request: "${proposal.title}". Please review it.`,
+    link: '/dashboard/admin/proposals',
+  });
+};
+
+const PROPOSAL_DECISIONS = {
+  REVISION_REQUESTED: {
+    type: 'PROPOSAL_REVISION_REQUESTED',
+    title: 'Revision Requested',
+    message: (p) => `The Admin requested a revision to your election proposal "${p.title}"${p.adminFeedback ? `: ${p.adminFeedback}` : '.'} Please update and resubmit it.`,
+  },
+  APPROVED: {
+    type: 'PROPOSAL_APPROVED',
+    title: 'Proposal Approved',
+    message: (p) => `Your election proposal "${p.title}" was approved and the official election has been created.`,
+  },
+  REJECTED: {
+    type: 'PROPOSAL_REJECTED',
+    title: 'Proposal Rejected',
+    message: (p) => `Your election proposal "${p.title}" was rejected${p.adminFeedback ? `: ${p.adminFeedback}` : '.'}`,
+  },
+};
+
+// Admin decision on a proposal -> the officer who proposed it.
+export const notifyProposalDecision = async (proposal) => {
+  const content = PROPOSAL_DECISIONS[proposal.status];
+  if (!content) return 0;
+  const officer = await User.findById(proposal.proposedBy).select('clerkId');
+  if (!officer) return 0;
+  return notifyUsers([officer.clerkId], {
+    stageKey: `proposal-${proposal.status}:${proposal._id}:${new Date(proposal.reviewedAt || proposal.updatedAt).getTime()}`,
+    type: content.type,
+    title: content.title,
+    message: content.message(proposal).slice(0, 1000),
+    link: '/dashboard/officer/proposals',
+  });
+};
+
+export const notifyComplaintSubmitted = async (complaint) => notifyUsers(await adminClerkIds(), {
+  stageKey: `complaint-submitted:${complaint.referenceId}`,
+  type: 'COMPLAINT_SUBMITTED',
+  title: 'New Complaint Received',
+  message: `Complaint ${complaint.referenceId}: "${complaint.subject}".`,
+  link: '/dashboard/admin/complaints',
+});
+
+export const notifyFeedbackSubmitted = async (feedback) => notifyUsers(await adminClerkIds(), {
+  stageKey: `feedback-submitted:${feedback.referenceId}`,
+  type: 'FEEDBACK_SUBMITTED',
+  title: 'New Feedback Received',
+  message: `Feedback ${feedback.referenceId}: "${feedback.subject}".`,
+  link: '/dashboard/admin/feedback',
+});
+
+export const notifyFeedbackUpdated = async (feedback) => notifyUsers([feedback.clerkId], {
+  stageKey: `feedback:${feedback.referenceId}:${feedback.status}:${new Date(feedback.updatedAt).getTime()}`,
+  type: 'FEEDBACK_UPDATED',
+  title: `Feedback ${feedback.referenceId} updated`,
+  message: `Your feedback "${feedback.subject}" is now ${feedback.status.replace('_', ' ').toLowerCase()}${feedback.adminReply ? ' - the Admin replied.' : '.'}`,
+  link: '/dashboard/feedback',
 });
 
 let timer = null;

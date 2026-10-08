@@ -2,8 +2,10 @@ import Election from '../models/Election.js';
 import Candidate from '../models/Candidate.js';
 import CandidateApplication from '../models/CandidateApplication.js';
 import User from '../models/User.js';
+import { sanitizeCandidates } from './proposalController.js';
 import ElectionProposal from '../models/ElectionProposal.js';
 import Complaint from '../models/Complaint.js';
+import Feedback from '../models/Feedback.js';
 import ResultEmailDelivery from '../models/ResultEmailDelivery.js';
 import { getElectionLifecycleStage } from '../utils/electionStatus.js';
 import { sendBookingConfirmationEmail } from './sendEmail.js';
@@ -14,6 +16,15 @@ import { getEffectiveElectionStatus } from '../utils/electionStatus.js';
 export const createElection = async (req, res) => {
   try {
     const { title, description, purpose, category, startTime, endTime } = req.body;
+    if (typeof title !== 'string' || !title.trim()) {
+      return res.status(400).json({ message: 'Election title is required' });
+    }
+    // Candidates entered in the same form - only name/party/about are read,
+    // so a candidate can never be created with votes.
+    const candidateData = sanitizeCandidates(req.body.candidates);
+    if (candidateData === null) {
+      return res.status(400).json({ message: 'candidates must be a list' });
+    }
     
     if (!startTime || !endTime) {
       return res.status(400).json({ message: 'startTime and endTime are required' });
@@ -30,19 +41,29 @@ export const createElection = async (req, res) => {
       return res.status(400).json({ message: 'endTime must be strictly after startTime' });
     }
 
+    const createdCandidates = candidateData?.length
+      ? await Candidate.insertMany(candidateData.map((c) => ({ ...c, votes: 0 })))
+      : [];
+
     const newElection = new Election({
-      title,
+      title: title.trim(),
       description,
       purpose,
       category,
+      showOnHomePage: req.body.showOnHomePage === true || req.body.showOnHomePage === 'true',
       createdBy: req.dbUser._id,
       status: 'upcoming',
       startTime: start,
       endTime: end,
-      candidates: [],
+      candidates: createdCandidates.map((c) => c._id),
       voters: []
     });
-    await newElection.save();
+    try {
+      await newElection.save();
+    } catch (error) {
+      if (createdCandidates.length) await Candidate.deleteMany({ _id: { $in: createdCandidates.map((c) => c._id) } }).catch(() => {});
+      throw error;
+    }
     res.status(201).json({ message: 'Election created successfully', election: newElection });
   } catch (error) {
     res.status(500).json({ message: 'Error creating election', error: error.message });
@@ -230,10 +251,33 @@ export const scheduleElection = async (req, res) => {
 };
 
 
+// Admin's "Show on home page" Yes/No for an existing election.
+export const setHomeVisibility = async (req, res) => {
+  try {
+    const { electionId } = req.params;
+    if (typeof req.body.showOnHomePage !== 'boolean') {
+      return res.status(400).json({ message: 'showOnHomePage must be true or false' });
+    }
+    const election = await Election.findByIdAndUpdate(
+      electionId,
+      { $set: { showOnHomePage: req.body.showOnHomePage } },
+      { new: true }
+    ).select('title showOnHomePage');
+    if (!election) return res.status(404).json({ message: 'Election not found' });
+    res.status(200).json({
+      message: election.showOnHomePage ? 'Election will be shown on the home page.' : 'Election removed from the home page.',
+      election,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating home page visibility', error: error.message });
+  }
+};
+
 // Counts for the admin dashboard cards.
 export const getDashboardSummary = async (req, res) => {
   try {
-    const [pendingProposals, openComplaints, failedResultEmails, elections] = await Promise.all([
+    const [newFeedback, pendingProposals, openComplaints, failedResultEmails, elections] = await Promise.all([
+      Feedback.countDocuments({ status: { $in: ['SUBMITTED', 'UNDER_REVIEW'] } }),
       ElectionProposal.countDocuments({ status: 'PENDING' }),
       Complaint.countDocuments({ status: { $in: ['OPEN', 'UNDER_REVIEW'] } }),
       ResultEmailDelivery.countDocuments({ status: 'FAILED' }),
@@ -244,6 +288,7 @@ export const getDashboardSummary = async (req, res) => {
 
     res.status(200).json({
       pendingProposals,
+      newFeedback,
       openComplaints,
       failedResultEmails,
       elections: stages,

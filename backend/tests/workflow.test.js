@@ -940,3 +940,209 @@ test('failed result emails: admin-only list grouped by election', { skip }, asyn
   assert.equal(group.failures[0].email, voterEmail('voter_3'));
   assert.equal(group.sentCount, 2);
 });
+
+// ---------------------------------------------------------------------------
+// Round 4: workflow notifications, feedback, receipt PDF, officer live
+// results, candidate documents / manifests, home page elections
+// ---------------------------------------------------------------------------
+
+test('notifications: admins get new requests; officer gets revision/approval/rejection', { skip }, async () => {
+  const Notification = (await import('../models/Notification.js')).default;
+  const before = await Notification.countDocuments({ type: 'PROPOSAL_SUBMITTED' });
+
+  const p = await api('POST', '/api/officer/proposals', { as: OFFICER, body: proposalBody({ title: 'Cultural Secretary 2026' }) });
+  assert.equal(p.status, 201);
+  const submitted = await Notification.find({ type: 'PROPOSAL_SUBMITTED' }).sort({ createdAt: -1 }).limit(2);
+  assert.equal(await Notification.countDocuments({ type: 'PROPOSAL_SUBMITTED' }), before + 2, 'one per admin');
+  assert.deepEqual(submitted.map((n) => n.clerkId).sort(), [ADMIN, ADMIN_NONVOTER].sort());
+  assert.match(submitted[0].message, /new election request: "Cultural Secretary 2026"/);
+  assert.equal(await Notification.countDocuments({ clerkId: OFFICER, type: 'PROPOSAL_SUBMITTED' }), 0);
+
+  // Revision requested -> the officer, with the admin's feedback
+  await api('POST', `/api/admin/proposals/${p.data.proposal._id}/request-revision`, { as: ADMIN, body: { feedback: 'Add the candidate list.' } });
+  const rev = await Notification.findOne({ clerkId: OFFICER, type: 'PROPOSAL_REVISION_REQUESTED' });
+  assert.equal(rev.title, 'Revision Requested');
+  assert.match(rev.message, /requested a revision.*Cultural Secretary 2026.*Add the candidate list/);
+  const officerList = await api('GET', '/api/notifications', { as: OFFICER });
+  assert.ok(officerList.data.notifications.some((n) => n.type === 'PROPOSAL_REVISION_REQUESTED' && !n.isRead));
+
+  // Resubmission -> admins again, marked as revised
+  await api('PUT', `/api/officer/proposals/${p.data.proposal._id}`, { as: OFFICER, body: { officerNotes: 'Added.' } });
+  assert.ok(await Notification.exists({ clerkId: ADMIN, type: 'PROPOSAL_SUBMITTED', title: 'Revised Election Request Submitted' }));
+
+  // Rejection / approval -> the officer
+  await api('POST', `/api/admin/proposals/${p.data.proposal._id}/reject`, { as: ADMIN, body: { reason: 'Clashes with exams' } });
+  assert.match((await Notification.findOne({ clerkId: OFFICER, type: 'PROPOSAL_REJECTED' })).message, /Clashes with exams/);
+  const p2 = await api('POST', '/api/officer/proposals', { as: OFFICER, body: proposalBody({ title: 'Approve Me' }) });
+  await api('POST', `/api/admin/proposals/${p2.data.proposal._id}/approve`, { as: ADMIN });
+  assert.ok(await Notification.exists({ clerkId: OFFICER, type: 'PROPOSAL_APPROVED' }));
+
+  // New complaint -> admins
+  await api('POST', '/api/complaints', { as: 'voter_3', body: { category: 'OTHER', subject: 'Notify admins', description: 'x' } });
+  assert.ok(await Notification.exists({ clerkId: ADMIN, type: 'COMPLAINT_SUBMITTED' }));
+  assert.equal(await Notification.countDocuments({ clerkId: OFFICER, type: 'COMPLAINT_SUBMITTED' }), 0, 'officers are not told about complaints');
+});
+
+test('feedback: user -> admin, status tracking, owner-only', { skip }, async () => {
+  const Notification = (await import('../models/Notification.js')).default;
+  assert.equal((await api('POST', '/api/feedback', { as: 'voter_1', body: { category: 'SUGGESTION', subject: '', message: 'x' } })).status, 400);
+  assert.equal((await api('POST', '/api/feedback', { as: 'voter_1', body: { category: 'NOPE', subject: 's', message: 'm' } })).status, 400);
+  assert.equal((await api('POST', '/api/feedback', { body: { category: 'GENERAL', subject: 's', message: 'm' } })).status, 401);
+
+  const sent = await api('POST', '/api/feedback', { as: 'voter_1', body: { category: 'SUGGESTION', subject: 'Dark mode', message: 'Please add dark mode.', rating: 4 } });
+  assert.equal(sent.status, 201);
+  assert.match(sent.data.feedback.referenceId, /^FB-\d{4}-\d{5}$/);
+  assert.equal(sent.data.feedback.status, 'SUBMITTED');
+  assert.ok(await Notification.exists({ clerkId: ADMIN, type: 'FEEDBACK_SUBMITTED' }));
+
+  assert.equal((await api('GET', '/api/admin/feedback', { as: OFFICER })).status, 403);
+  const all = await api('GET', '/api/admin/feedback', { as: ADMIN });
+  const item = all.data.find((f) => f.referenceId === sent.data.feedback.referenceId);
+  assert.equal(item.from.email, 'clerk_voter_1@mail.test');
+
+  const upd = await api('PUT', `/api/admin/feedback/${item._id}`, { as: ADMIN, body: { status: 'ACKNOWLEDGED', adminReply: 'Planned for next release.' } });
+  assert.equal(upd.status, 200);
+  assert.ok(await Notification.exists({ clerkId: 'voter_1', type: 'FEEDBACK_UPDATED' }));
+
+  const mine = await api('GET', '/api/feedback/my', { as: 'voter_1' });
+  assert.equal(mine.data[0].status, 'ACKNOWLEDGED');
+  assert.equal(mine.data[0].adminReply, 'Planned for next release.');
+  assert.equal((await api('GET', '/api/feedback/my', { as: 'voter_2' })).data.length, 0);
+});
+
+const pdfText = (buffer) => {
+  // pdfkit (uncompressed) writes text as <hex> strings in TJ operators.
+  const raw = buffer.toString('latin1');
+  return [...raw.matchAll(/<([0-9a-f]+)>/gi)].map((m) => Buffer.from(m[1], 'hex').toString('latin1')).join('');
+};
+
+test('vote receipt PDF: own vote only, receipt details, never the candidate', { skip }, async () => {
+  const get = (as, id) => fetch(`${baseUrl}/api/elections/${id}/my-receipt.pdf`, { headers: as ? { 'x-test-user': as } : {} });
+  const res = await get('voter_1', state.electionId);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'application/pdf');
+  const buf = Buffer.from(await res.arrayBuffer());
+  assert.equal(buf.toString('latin1', 0, 5), '%PDF-');
+  const text = pdfText(buf);
+  const election = await models.Election.findById(state.electionId);
+  const receiptId = election.voters.find((v) => v.clerkId === 'voter_1').receiptId;
+  assert.ok(text.includes(receiptId.replace(/-/g, '')) || text.includes(receiptId), 'contains receipt id');
+  assert.ok(text.includes('MIT Student Council Election 2026'));
+  for (const name of ['Candidate A', 'Candidate B', 'Candidate C']) assert.ok(!text.includes(name), `must not mention ${name}`);
+
+  assert.equal((await get('voter_4', state.electionId)).status, 404, 'non-voter has no receipt');
+  assert.equal((await get(null, state.electionId)).status, 401);
+});
+
+test('officer live results: running tallies with percentages; voters still locked out', { skip }, async () => {
+  const [a, b] = await models.Candidate.create([{ name: 'Live A' }, { name: 'Live B' }]);
+  const election = await models.Election.create({
+    title: 'Live Election', status: 'upcoming', startTime: new Date(Date.now() - 60_000), endTime: new Date(Date.now() + hour), candidates: [a._id, b._id],
+  });
+  for (const [v, c] of [['voter_1', a], ['voter_2', a], ['voter_3', b]]) {
+    assert.equal((await api('POST', `/api/elections/${election._id}/candidates/${c._id}/vote`, { as: v })).status, 200);
+  }
+  const live = await api('GET', `/api/officer/elections/${election._id}/live-results`, { as: OFFICER });
+  assert.equal(live.status, 200);
+  assert.equal(live.data.totalVotes, 3);
+  assert.deepEqual(live.data.results.map((r) => [r.name, r.votes, r.percentage]), [['Live A', 2, 66.7], ['Live B', 1, 33.3]]);
+  assert.equal(live.data.lifecycleStage, 'ONGOING');
+  assert.doesNotMatch(JSON.stringify(live.data), /voter_/);
+
+  // A further vote shows up on the next poll
+  assert.equal((await api('POST', `/api/elections/${election._id}/candidates/${b._id}/vote`, { as: 'voter_4' })).status, 200);
+  assert.equal((await api('GET', `/api/officer/elections/${election._id}/live-results`, { as: OFFICER })).data.totalVotes, 4);
+
+  assert.equal((await api('GET', `/api/officer/elections/${election._id}/live-results`, { as: 'voter_1' })).status, 403);
+  assert.equal((await api('GET', `/api/elections/${election._id}/results`)).status, 400, 'public results still locked while ongoing');
+  state.liveElectionId = election._id.toString();
+});
+
+test('candidate documents & election manifest: upload, visibility rules', { skip }, async () => {
+  const election = await models.Election.findById(state.reminderElectionId).populate('candidates');
+  const cand = election.candidates[0];
+  const base = `/api/officer/elections/${election._id}/candidates/${cand._id}/documents`;
+
+  const manifesto = await upload(base, { as: OFFICER, fields: { docType: 'MANIFESTO', title: 'Manifesto' }, files: [{ field: 'documents', data: PDF, type: 'application/pdf', name: 'manifesto.pdf' }] });
+  assert.equal(manifesto.status, 200);
+  const privateDoc = await upload(`/api/admin/elections/${election._id}/candidates/${cand._id}/documents`, { as: ADMIN, fields: { docType: 'DOCUMENT', title: 'ID proof' }, files: [{ field: 'documents', data: PNG, type: 'image/png', name: 'id.png' }] });
+  assert.equal(privateDoc.status, 200);
+  const docs = privateDoc.data.candidate.documents;
+  const pub = docs.find((d) => d.docType === 'MANIFESTO');
+  const priv = docs.find((d) => d.docType === 'DOCUMENT');
+
+  const get = (as, id) => fetch(`${baseUrl}/api/candidates/documents/${id}`, { headers: as ? { 'x-test-user': as } : {} });
+  assert.equal((await get(null, pub.fileId)).status, 200, 'manifesto is public');
+  assert.equal((await get(null, priv.fileId)).status, 404, 'private doc hidden from public');
+  assert.equal((await get('voter_1', priv.fileId)).status, 404, 'private doc hidden from voters');
+  assert.equal((await get(OFFICER, priv.fileId)).status, 200);
+  assert.equal((await get(ADMIN, priv.fileId)).status, 200);
+
+  // Public election data lists only the manifesto; staff see both
+  const pubView = await api('GET', `/api/elections/${election._id}`, { as: 'voter_1' });
+  assert.deepEqual(pubView.data.candidates.find((c) => c._id === String(cand._id)).documents.map((d) => d.docType), ['MANIFESTO']);
+  const staffView = await api('GET', `/api/elections/${election._id}`, { as: ADMIN });
+  assert.equal(staffView.data.candidates.find((c) => c._id === String(cand._id)).documents.length, 2);
+
+  // Validation + authorization
+  assert.equal((await upload(base, { as: 'voter_1', files: [{ field: 'documents', data: PDF, type: 'application/pdf', name: 'x.pdf' }] })).status, 403);
+  assert.equal((await upload(base, { as: OFFICER, files: [{ field: 'documents', data: Buffer.from('<script>'), type: 'application/pdf', name: 'x.pdf' }] })).status, 400);
+  assert.equal((await upload(`/api/officer/elections/${state.electionId}/candidates/${cand._id}/documents`, { as: OFFICER, files: [{ field: 'documents', data: PDF, type: 'application/pdf', name: 'x.pdf' }] })).status, 404, 'candidate must belong to the election');
+  // Uploading documents never touches votes
+  assert.equal((await models.Candidate.findById(cand._id)).votes, 0);
+
+  const del = await api('DELETE', `/api/admin/elections/${election._id}/candidates/${cand._id}/documents/${priv.fileId}`, { as: ADMIN });
+  assert.equal(del.status, 200);
+  assert.equal((await get(ADMIN, priv.fileId)).status, 404);
+
+  // Election manifest: upload (officer), public read, replace, delete (admin)
+  const m1 = await upload(`/api/officer/elections/${election._id}/manifest`, { as: OFFICER, files: [{ field: 'manifest', data: PDF, type: 'application/pdf', name: 'rules.pdf' }] });
+  assert.equal(m1.status, 200);
+  const pubManifest = await fetch(`${baseUrl}/api/elections/${election._id}/manifest`);
+  assert.equal(pubManifest.status, 200);
+  assert.equal(pubManifest.headers.get('content-type'), 'application/pdf');
+  assert.equal((await api('GET', `/api/elections/${election._id}`)).data.manifest.filename, 'rules.pdf');
+  assert.equal((await upload(`/api/admin/elections/${election._id}/manifest`, { as: ADMIN, files: [{ field: 'manifest', data: PNG, type: 'image/png', name: 'notice.png' }] })).status, 200);
+  assert.equal((await fetch(`${baseUrl}/api/elections/${election._id}/manifest`)).headers.get('content-type'), 'image/png');
+  assert.equal((await upload(`/api/admin/elections/${election._id}/manifest`, { as: 'voter_1', files: [{ field: 'manifest', data: PNG, type: 'image/png', name: 'n.png' }] })).status, 403);
+  assert.equal((await api('DELETE', `/api/admin/elections/${election._id}/manifest`, { as: ADMIN })).status, 200);
+  assert.equal((await fetch(`${baseUrl}/api/elections/${election._id}/manifest`)).status, 404);
+});
+
+test('admin create election with candidates + home page visibility', { skip }, async () => {
+  const created = await api('POST', '/api/admin/elections', {
+    as: ADMIN,
+    body: {
+      title: 'Home Page Election', description: 'd',
+      startTime: new Date(Date.now() + 2 * hour).toISOString(), endTime: new Date(Date.now() + 5 * hour).toISOString(),
+      showOnHomePage: true,
+      candidates: [{ name: 'H-A', partyName: 'PA', votes: 500 }, { name: 'H-B' }, { name: '' }],
+    },
+  });
+  assert.equal(created.status, 201);
+  const election = created.data.election;
+  assert.equal(election.showOnHomePage, true);
+  const cands = await models.Candidate.find({ _id: { $in: election.candidates } });
+  assert.deepEqual(cands.map((c) => c.name).sort(), ['H-A', 'H-B'], 'blank rows ignored');
+  assert.ok(cands.every((c) => c.votes === 0), 'votes cannot be injected');
+  assert.equal((await api('POST', '/api/admin/elections', { as: ADMIN, body: { title: ' ', startTime: new Date().toISOString(), endTime: new Date(Date.now() + hour).toISOString() } })).status, 400);
+
+  // Home page lists it under upcoming; the live election isn't shown (flag off)
+  let home = await api('GET', '/api/home-elections');
+  assert.equal(home.status, 200);
+  assert.ok(home.data.upcoming.some((e) => e.title === 'Home Page Election'));
+  assert.ok(!home.data.ongoing.some((e) => e._id === state.liveElectionId));
+
+  // Toggle the ongoing election onto the home page; drafts never appear
+  assert.equal((await api('PUT', `/api/admin/elections/${state.liveElectionId}/home-visibility`, { as: OFFICER, body: { showOnHomePage: true } })).status, 403);
+  assert.equal((await api('PUT', `/api/admin/elections/${state.liveElectionId}/home-visibility`, { as: ADMIN, body: { showOnHomePage: 'yes' } })).status, 400);
+  assert.equal((await api('PUT', `/api/admin/elections/${state.liveElectionId}/home-visibility`, { as: ADMIN, body: { showOnHomePage: true } })).status, 200);
+  await models.Election.create({ title: 'Hidden Draft Home', status: 'draft', showOnHomePage: true, startTime: new Date(Date.now() + hour), endTime: new Date(Date.now() + 2 * hour) });
+  home = await api('GET', '/api/home-elections');
+  assert.ok(home.data.ongoing.some((e) => e._id === state.liveElectionId));
+  assert.ok(!JSON.stringify(home.data).includes('Hidden Draft Home'));
+  assert.ok(!JSON.stringify(home.data).includes('"votes"'));
+
+  await api('PUT', `/api/admin/elections/${state.liveElectionId}/home-visibility`, { as: ADMIN, body: { showOnHomePage: false } });
+  assert.ok(!(await api('GET', '/api/home-elections')).data.ongoing.some((e) => e._id === state.liveElectionId));
+});

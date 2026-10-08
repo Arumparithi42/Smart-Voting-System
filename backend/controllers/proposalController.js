@@ -2,6 +2,10 @@ import mongoose from 'mongoose';
 import ElectionProposal from '../models/ElectionProposal.js';
 import Election from '../models/Election.js';
 import Candidate from '../models/Candidate.js';
+import { notifyProposalSubmitted, notifyProposalDecision } from '../services/notificationService.js';
+
+// Notifications never block or fail the request that triggered them.
+const quietly = (promise) => promise.catch((error) => console.error('Notification failed:', error.message));
 
 const MAX_CANDIDATES = 50;
 
@@ -9,7 +13,7 @@ const str = (value, max = 5000) => (typeof value === 'string' ? value.trim().sli
 
 // Only these fields are ever read from a client body for a candidate -
 // in particular a client can never supply `votes`.
-const sanitizeCandidates = (candidates) => {
+export const sanitizeCandidates = (candidates) => {
   if (candidates === undefined) return undefined;
   if (!Array.isArray(candidates)) return null;
   return candidates
@@ -71,6 +75,7 @@ export const createProposal = async (req, res) => {
       status: 'PENDING',
     });
 
+    await quietly(notifyProposalSubmitted(proposal));
     res.status(201).json({ message: 'Election proposal submitted to Admin.', proposal });
   } catch (error) {
     res.status(500).json({ message: 'Error submitting proposal', error: error.message });
@@ -151,6 +156,7 @@ export const updateMyProposal = async (req, res) => {
       return res.status(409).json({ message: 'This proposal was reviewed while you were editing it. Please reload.' });
     }
 
+    if (wasRevision) await quietly(notifyProposalSubmitted(updated, { resubmitted: true }));
     res.status(200).json({
       message: wasRevision ? 'Revised proposal resubmitted to Admin.' : 'Proposal updated.',
       proposal: updated,
@@ -256,10 +262,12 @@ export const approveProposal = async (req, res) => {
         voters: [],
         proposalId: proposal._id,
         createdBy: req.dbUser._id,
+        showOnHomePage: req.body.showOnHomePage === true,
       });
 
       claimed.createdElection = election._id;
       await claimed.save();
+      await quietly(notifyProposalDecision(claimed));
 
       res.status(201).json({ message: 'Proposal approved and official election created.', proposal: claimed, election });
     } catch (error) {
@@ -300,6 +308,8 @@ const reviewWithoutElection = (newStatus, successMessage, feedbackLabel) => asyn
       return res.status(409).json({ message: 'Only pending proposals can be reviewed.' });
     }
 
+    // Tell the officer (revision requested / rejected).
+    await quietly(notifyProposalDecision(updated));
     res.status(200).json({ message: successMessage, proposal: updated });
   } catch (error) {
     res.status(500).json({ message: 'Error reviewing proposal', error: error.message });

@@ -9,7 +9,7 @@ import User from '../models/User.js';
 import StoredFile from '../models/StoredFile.js';
 import { detectFileType, IMAGE_TYPES, safeFilename, sendStoredFile } from '../middleware/upload.js';
 import { nextComplaintReference } from '../utils/counter.js';
-import { notifyComplaintUpdated } from '../services/notificationService.js';
+import { notifyComplaintUpdated, notifyComplaintSubmitted } from '../services/notificationService.js';
 
 const str = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : undefined);
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -107,6 +107,7 @@ export const createComplaint = async (req, res) => {
       throw error;
     }
     await complaint.populate('election', 'title');
+    await notifyComplaintSubmitted(complaint).catch((error) => console.error('Notification failed:', error.message));
 
     res.status(201).json({
       message: 'Your complaint has been submitted to the Admin.',

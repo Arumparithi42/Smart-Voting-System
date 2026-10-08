@@ -16,3 +16,10 @@ export const nextComplaintReference = async (date = new Date()) => {
   const seq = await nextSequence(`complaint-${year}`);
   return `CMP-${year}-${String(seq).padStart(5, '0')}`;
 };
+
+// e.g. FB-2026-00012
+export const nextFeedbackReference = async (date = new Date()) => {
+  const year = date.getFullYear();
+  const seq = await nextSequence(`feedback-${year}`);
+  return `FB-${year}-${String(seq).padStart(5, '0')}`;
+};
