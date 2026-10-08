@@ -5,8 +5,9 @@ import { FileText, PlusCircle, Trash2, Upload, X } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import Req, { RequiredNote } from "../components/ui/Req";
 import axiosInstance from "../utils/axiosInstance";
+import ManifestoFileInput, { uploadCandidateManifesto } from "../components/documents/ManifestoFileInput";
 
-const emptyCandidate = () => ({ name: "", partyName: "", about: "" });
+const emptyCandidate = () => ({ name: "", partyName: "", about: "", manifestoFile: null });
 const MAX_MANIFEST = 10 * 1024 * 1024;
 
 // Admin: create an official election, optionally with its candidates, a
@@ -35,6 +36,7 @@ const CreateElection = () => {
   const handleCreateElection = async (e) => {
     e.preventDefault();
     if (new Date(form.endTime) <= new Date(form.startTime)) return toast.error("End time must be after the start time.");
+    const submitted = candidates.filter((c) => c.name.trim());
     setSubmitting(true);
     try {
       // datetime-local values are the admin's LOCAL time; send unambiguous
@@ -44,9 +46,18 @@ const CreateElection = () => {
         startTime: new Date(form.startTime).toISOString(),
         endTime: new Date(form.endTime).toISOString(),
         showOnHomePage: showOnHomePage === "yes",
-        candidates: candidates.filter((c) => c.name.trim()),
+        candidates: submitted.map(({ name, partyName, about }) => ({ name, partyName, about })),
       });
       const electionId = res.data.election._id;
+      // Each candidate's optional manifesto, matched to the created candidates
+      // (returned in the order sent).
+      const created = res.data.candidates || [];
+      const uploads = submitted.map((c, i) => {
+        const target = created.length === submitted.length ? created[i] : created.find((x) => x.name === c.name.trim());
+        return c.manifestoFile && target ? uploadCandidateManifesto("/api/admin", electionId, target._id, c.manifestoFile) : null;
+      }).filter(Boolean);
+      const failed = (await Promise.allSettled(uploads)).filter((r) => r.status === "rejected").length;
+      if (failed) toast.warn(`Election created, but ${failed} candidate manifesto upload(s) failed. You can add candidates again from the manage page.`);
       if (manifest) {
         const body = new FormData();
         body.append("manifest", manifest);
@@ -115,12 +126,12 @@ const CreateElection = () => {
                 <PlusCircle className="h-4 w-4" aria-hidden="true" /> Add candidate
               </button>
             </div>
-            <p className="mb-3 text-xs text-slate-500">Add as many candidates as needed. Leave a row&apos;s name empty to skip it. You can also add candidates and their documents later, before voting starts.</p>
+            <p className="mb-3 text-xs text-slate-500">Add as many candidates as needed, each with an optional manifesto (PDF or image). Leave a row&apos;s name empty to skip it. You can also add candidates later, before voting starts.</p>
             <div className="space-y-3">
               {candidates.map((c, i) => (
-                <div key={i} className="grid gap-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200 sm:grid-cols-[1fr_1fr_2fr_auto] sm:items-end">
-                  <label className="block text-xs font-medium text-slate-600">Name{c.partyName || c.about ? <Req /> : null}
-                    <input className={input} value={c.name} onChange={(e) => setCandidate(i, "name", e.target.value)} required={!!(c.partyName || c.about)} maxLength={200} aria-label={`Candidate ${i + 1} name`} />
+                <div key={i} className="grid gap-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200 sm:grid-cols-[1fr_1fr_2fr_auto_auto] sm:items-end">
+                  <label className="block text-xs font-medium text-slate-600">Name{c.partyName || c.about || c.manifestoFile ? <Req /> : null}
+                    <input className={input} value={c.name} onChange={(e) => setCandidate(i, "name", e.target.value)} required={!!(c.partyName || c.about || c.manifestoFile)} maxLength={200} aria-label={`Candidate ${i + 1} name`} />
                   </label>
                   <label className="block text-xs font-medium text-slate-600">Party
                     <input className={input} value={c.partyName} onChange={(e) => setCandidate(i, "partyName", e.target.value)} maxLength={200} />
@@ -128,6 +139,7 @@ const CreateElection = () => {
                   <label className="block text-xs font-medium text-slate-600">About
                     <input className={input} value={c.about} onChange={(e) => setCandidate(i, "about", e.target.value)} maxLength={2000} />
                   </label>
+                  <ManifestoFileInput file={c.manifestoFile} onChange={(f) => setCandidate(i, "manifestoFile", f)} label={`Candidate ${i + 1} manifesto (optional)`} compact />
                   <button type="button" onClick={() => setCandidates(candidates.filter((_, j) => j !== i))} className="rounded-md p-2 text-red-600 hover:bg-red-50" aria-label={`Remove candidate ${i + 1}`}>
                     <Trash2 className="h-4 w-4" />
                   </button>

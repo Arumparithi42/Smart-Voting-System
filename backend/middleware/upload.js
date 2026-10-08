@@ -24,10 +24,10 @@ export const safeFilename = (name, ext) => {
 // Multipart parser for one route. Turns multer errors (too big, too many
 // files) into clean 400 responses, then re-sanitizes the multipart text
 // fields (the global sanitizer ran before multer filled req.body).
-export const acceptUpload = ({ field, maxFiles = 1, maxBytes }) => {
+export const acceptUpload = ({ field, maxFiles = 1, maxBytes, maxFields = 20, maxFieldBytes = 10_000 }) => {
   const parser = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: maxBytes, files: maxFiles, fields: 20, fieldSize: 10_000 },
+    limits: { fileSize: maxBytes, files: maxFiles, fields: maxFields, fieldSize: maxFieldBytes },
   });
   const handler = maxFiles === 1 ? parser.single(field) : parser.array(field, maxFiles);
   return (req, res, next) => {
@@ -37,7 +37,9 @@ export const acceptUpload = ({ field, maxFiles = 1, maxBytes }) => {
           ? `Each file must be at most ${Math.round(maxBytes / 1024 / 1024)} MB.`
           : error.code === 'LIMIT_FILE_COUNT' || error.code === 'LIMIT_UNEXPECTED_FILE'
             ? `You can attach at most ${maxFiles} file(s).`
-            : 'Could not read the uploaded file.';
+            : error.code === 'LIMIT_FIELD_VALUE' || error.code === 'LIMIT_FIELD_COUNT'
+              ? 'Some of the text is too long. Please shorten it and try again.'
+              : 'Could not read the uploaded file.';
         return res.status(400).json({ message });
       }
       if (req.body) req.body = stripOperators(req.body);

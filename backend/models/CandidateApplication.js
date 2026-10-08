@@ -16,6 +16,15 @@ const candidateApplicationSchema = new mongoose.Schema({
   about: { type: String, trim: true },
   manifesto: { type: String, trim: true },
   promises: [{ type: String, trim: true }],
+  // Optional manifesto file uploaded by the applicant (PDF / image). It
+  // becomes the candidate's public manifesto document when approved.
+  manifestoFile: {
+    fileId: { type: mongoose.Schema.Types.ObjectId, ref: 'StoredFile' },
+    filename: String,
+    contentType: String,
+    size: Number,
+    uploadedAt: Date,
+  },
   
   status: {
     type: String,

@@ -1146,3 +1146,47 @@ test('admin create election with candidates + home page visibility', { skip }, a
   await api('PUT', `/api/admin/elections/${state.liveElectionId}/home-visibility`, { as: ADMIN, body: { showOnHomePage: false } });
   assert.ok(!(await api('GET', '/api/home-elections')).data.ongoing.some((e) => e._id === state.liveElectionId));
 });
+
+test('candidate application: optional manifesto/promises; applicant manifesto file becomes the candidate manifesto', { skip }, async () => {
+  const election = await models.Election.create({ title: 'Application Election', status: 'upcoming', startTime: new Date(Date.now() + 3 * hour), endTime: new Date(Date.now() + 6 * hour) });
+  const id = String(election._id);
+
+  // Manifesto and promises are optional (JSON, no file)
+  const plain = await api('POST', '/api/applications', { as: 'voter_2', body: { electionId: id, fullName: 'No Manifesto', email: 'n@m.test', partyName: 'P', promises: [''] } });
+  assert.equal(plain.status, 201);
+  assert.deepEqual(plain.data.application.promises, [], 'blank promises are dropped');
+
+  // Multipart with a manifesto file and promises as JSON
+  const badFile = await upload('/api/applications', { as: 'voter_1', fields: { electionId: id, fullName: 'Bad', email: 'b@b.test' }, files: [{ field: 'manifestoFile', data: Buffer.from('<html>'), type: 'application/pdf', name: 'm.pdf' }] });
+  assert.equal(badFile.status, 400, 'file type checked from content');
+  const withFile = await upload('/api/applications', {
+    as: 'voter_1',
+    fields: { electionId: id, fullName: 'File Candidate', email: 'f@c.test', partyName: 'Unity', promises: JSON.stringify(['Clean campus', ' ']) },
+    files: [{ field: 'manifestoFile', data: PDF, type: 'application/pdf', name: 'my manifesto.pdf' }],
+  });
+  assert.equal(withFile.status, 201);
+  const app = withFile.data.application;
+  assert.deepEqual(app.promises, ['Clean campus']);
+  assert.equal(app.manifestoFile.contentType, 'application/pdf');
+
+  // Applicant and admin can open it; other users / officers cannot
+  const getOwn = (as) => fetch(`${baseUrl}/api/applications/${app._id}/manifesto-file`, { headers: { 'x-test-user': as } });
+  const getAdmin = (as) => fetch(`${baseUrl}/api/admin/candidate-applications/${app._id}/manifesto-file`, { headers: { 'x-test-user': as } });
+  assert.equal((await getOwn('voter_1')).status, 200);
+  assert.equal((await getOwn('voter_2')).status, 404);
+  assert.equal((await getAdmin(ADMIN)).status, 200);
+  assert.equal((await getAdmin(OFFICER)).status, 403);
+
+  // Approval: the file becomes the candidate's public MANIFESTO document
+  assert.equal((await api('POST', `/api/admin/candidate-applications/${app._id}/approve`, { as: ADMIN })).status, 200);
+  const view = await api('GET', `/api/elections/${id}`);
+  const cand = view.data.candidates.find((c) => c.name === 'File Candidate');
+  assert.equal(cand.documents.length, 1);
+  assert.equal(cand.documents[0].docType, 'MANIFESTO');
+  assert.equal((await fetch(`${baseUrl}/api/candidates/documents/${cand.documents[0].fileId}`)).status, 200, 'public manifesto');
+  assert.equal((await getOwn('voter_1')).status, 200, 'applicant can still open it');
+
+  // createElection returns the created candidates (ids for per-candidate manifestos)
+  const created = await api('POST', '/api/admin/elections', { as: ADMIN, body: { title: 'Cands', startTime: new Date(Date.now() + hour).toISOString(), endTime: new Date(Date.now() + 2 * hour).toISOString(), candidates: [{ name: 'One' }, { name: 'Two' }] } });
+  assert.deepEqual(created.data.candidates.map((c) => c.name), ['One', 'Two']);
+});

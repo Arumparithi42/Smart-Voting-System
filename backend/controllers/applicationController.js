@@ -1,6 +1,39 @@
 import CandidateApplication from '../models/CandidateApplication.js';
 import Election from '../models/Election.js';
+import StoredFile from '../models/StoredFile.js';
 import { getEffectiveElectionStatus } from '../utils/electionStatus.js';
+import { storeValidated } from './documentController.js';
+import { sendStoredFile } from '../middleware/upload.js';
+
+const MAX_PROMISES = 20;
+
+// Manifesto and promises are optional. Multipart forms send promises as a
+// JSON string; blank entries are dropped.
+const parsePromises = (value) => {
+  let list = value;
+  if (typeof value === 'string') {
+    try { list = JSON.parse(value); } catch { list = [value]; }
+  }
+  if (!Array.isArray(list)) return [];
+  return list.filter((p) => typeof p === 'string').map((p) => p.trim()).filter(Boolean).slice(0, MAX_PROMISES);
+};
+
+// Stores the applicant's optional manifesto file (PDF / image, type checked
+// from the content) and replaces any previous one. `removeManifestoFile`
+// = 'true' removes it without a replacement.
+const applyManifestoFile = async (application, req) => {
+  const previous = application.manifestoFile?.fileId;
+  if (req.file) {
+    const [stored] = await storeValidated([req.file], 'application-manifesto', req.clerkId);
+    application.manifestoFile = { fileId: stored._id, filename: stored.filename, contentType: stored.contentType, size: stored.size, uploadedAt: new Date() };
+  } else if (String(req.body.removeManifestoFile) === 'true') {
+    application.manifestoFile = undefined;
+  } else {
+    return null;
+  }
+  return previous || null;
+};
+const dropFile = (fileId) => fileId && StoredFile.deleteOne({ _id: fileId, kind: 'application-manifesto' }).catch(() => {});
 
 // Get candidate applications for the authenticated user
 export const getMyApplications = async (req, res) => {
@@ -17,7 +50,8 @@ export const getMyApplications = async (req, res) => {
 export const createApplication = async (req, res) => {
   try {
     const clerkId = req.clerkId;
-    const { electionId, fullName, email, phone, dateOfBirth, address, profilePhotoUrl, partyName, partySymbolUrl, qualification, occupation, about, manifesto, promises } = req.body;
+    const { electionId, fullName, email, phone, dateOfBirth, address, profilePhotoUrl, partyName, partySymbolUrl, qualification, occupation, about, manifesto } = req.body;
+    const promises = parsePromises(req.body.promises);
 
     const election = await Election.findById(electionId);
     if (!election) {
@@ -49,7 +83,9 @@ export const createApplication = async (req, res) => {
         existing.manifesto = manifesto;
         existing.promises = promises;
         existing.rejectionReason = undefined; 
+        const replaced = await applyManifestoFile(existing, req);
         await existing.save();
+        dropFile(replaced);
         return res.status(200).json({ message: 'Application resubmitted successfully', application: existing });
       } else {
         return res.status(400).json({ message: 'You have already submitted an application for this election.' });
@@ -75,10 +111,11 @@ export const createApplication = async (req, res) => {
       status: 'pending' // Enforce pending
     });
 
+    await applyManifestoFile(newApplication, req);
     await newApplication.save();
     res.status(201).json({ message: 'Application submitted successfully', application: newApplication });
   } catch (error) {
-    res.status(500).json({ message: 'Error submitting application', error: error.message });
+    res.status(error.status || 500).json({ message: error.status ? error.message : 'Error submitting application', error: error.message });
   }
 };
 
@@ -109,9 +146,10 @@ export const editApplication = async (req, res) => {
     const editableFields = ['fullName', 'email', 'phone', 'dateOfBirth', 'address', 'profilePhotoUrl', 'partyName', 'partySymbolUrl', 'qualification', 'occupation', 'about', 'manifesto', 'promises'];
     editableFields.forEach(field => {
       if (updateData[field] !== undefined) {
-        application[field] = updateData[field];
+        application[field] = field === 'promises' ? parsePromises(updateData[field]) : updateData[field];
       }
     });
+    const replaced = await applyManifestoFile(application, req);
 
     // If it was rejected, editing implicitly moves it back to pending
     if (application.status === 'rejected') {
@@ -120,9 +158,10 @@ export const editApplication = async (req, res) => {
     }
 
     await application.save();
+    dropFile(replaced);
     res.status(200).json({ message: 'Application updated', application });
   } catch (error) {
-    res.status(500).json({ message: 'Error editing application', error: error.message });
+    res.status(error.status || 500).json({ message: error.status ? error.message : 'Error editing application', error: error.message });
   }
 };
 
@@ -141,5 +180,20 @@ export const getApplicationById = async (req, res) => {
      res.status(200).json(application);
   } catch (error) {
      res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// The applicant's own manifesto file (admins use their own endpoint).
+export const getMyApplicationManifesto = async (req, res) => {
+  try {
+    const application = await CandidateApplication.findById(req.params.id).select('clerkId manifestoFile');
+    if (!application || application.clerkId !== req.clerkId || !application.manifestoFile?.fileId) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    const file = await StoredFile.findOne({ _id: application.manifestoFile.fileId, kind: { $in: ['application-manifesto', 'candidate-document'] } });
+    if (!file) return res.status(404).json({ message: 'File not found' });
+    sendStoredFile(res, file);
+  } catch (error) {
+    res.status(error.status || 500).json({ message: 'Error loading file', error: error.message });
   }
 };

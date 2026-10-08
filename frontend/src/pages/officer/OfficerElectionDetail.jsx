@@ -9,6 +9,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import { formatDateTime } from '../../utils/electionStages';
 import CandidateDocuments from '../../components/documents/CandidateDocuments';
+import ManifestoFileInput, { uploadCandidateManifesto } from '../../components/documents/ManifestoFileInput';
 import ManifestManager from '../../components/documents/ManifestManager';
 import Req from '../../components/ui/Req';
 
@@ -50,6 +51,7 @@ export default function OfficerElectionDetail() {
   const [analytics, setAnalytics] = useState(null);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', partyName: '', about: '' });
+  const [manifestoFile, setManifestoFile] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -71,9 +73,14 @@ export default function OfficerElectionDetail() {
     e.preventDefault();
     setBusy(true);
     try {
-      await axiosInstance.post(`/api/officer/elections/${electionId}/candidates`, form);
+      const res = await axiosInstance.post(`/api/officer/elections/${electionId}/candidates`, form);
+      if (manifestoFile) {
+        await uploadCandidateManifesto('/api/officer', electionId, res.data.candidate._id, manifestoFile)
+          .catch((err) => toast.warn(`Candidate added, but the manifesto upload failed: ${err.response?.data?.message || err.message}`));
+      }
       toast.success('Candidate added.');
       setForm({ name: '', partyName: '', about: '' });
+      setManifestoFile(null);
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not add candidate');
@@ -175,7 +182,7 @@ export default function OfficerElectionDetail() {
             </ul>
           )}
           {!election.candidatesLocked && (
-            <form onSubmit={addCandidate} className="mt-4 grid items-end gap-2 border-t pt-4 sm:grid-cols-[1fr_1fr_2fr_auto]">
+            <form onSubmit={addCandidate} className="mt-4 grid items-end gap-2 border-t pt-4 sm:grid-cols-[1fr_1fr_2fr_auto_auto]">
               <label className="block text-xs font-medium text-slate-600">Name<Req />
                 <input className={input} placeholder="Candidate name" aria-label="Candidate name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </label>
@@ -185,6 +192,7 @@ export default function OfficerElectionDetail() {
               <label className="block text-xs font-medium text-slate-600">About
                 <input className={input} placeholder="About (optional)" aria-label="About" value={form.about} onChange={(e) => setForm({ ...form, about: e.target.value })} />
               </label>
+              <ManifestoFileInput file={manifestoFile} onChange={setManifestoFile} label="Manifesto file (optional)" compact />
               <button disabled={busy} className="inline-flex items-center justify-center gap-1 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-slate-400">
                 <PlusCircle className="h-4 w-4" aria-hidden="true" /> Add
               </button>

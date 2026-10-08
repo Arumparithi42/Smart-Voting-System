@@ -10,6 +10,7 @@ import { useConfirm } from "../components/ui/ConfirmDialog";
 import { ErrorState, LoadingState } from "../components/ui/States";
 import CandidateDocuments from "../components/documents/CandidateDocuments";
 import ManifestManager from "../components/documents/ManifestManager";
+import ManifestoFileInput, { uploadCandidateManifesto } from "../components/documents/ManifestoFileInput";
 import { formatDateTime } from "../utils/electionStages";
 
 const emptyCandidate = { name: "", partyName: "", about: "" };
@@ -22,6 +23,7 @@ export default function ElectionDetail() {
   const [election, setElection] = useState(null);
   const [error, setError] = useState("");
   const [form, setForm] = useState(emptyCandidate);
+  const [manifestoFile, setManifestoFile] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -39,9 +41,14 @@ export default function ElectionDetail() {
     e.preventDefault();
     setBusy(true);
     try {
-      await axiosInstance.post(`/api/admin/elections/${id}/candidates`, form);
+      const res = await axiosInstance.post(`/api/admin/elections/${id}/candidates`, form);
+      if (manifestoFile) {
+        await uploadCandidateManifesto("/api/admin", id, res.data.candidate._id, manifestoFile)
+          .catch((err) => toast.warn(`Candidate added, but the manifesto upload failed: ${err.response?.data?.message || err.message}`));
+      }
       toast.success("Candidate added.");
       setForm(emptyCandidate);
+      setManifestoFile(null);
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || "Could not add candidate");
@@ -119,6 +126,7 @@ export default function ElectionDetail() {
               <label className="block text-sm font-medium text-slate-700">About
                 <textarea className={input} rows={2} value={form.about} onChange={(e) => setForm({ ...form, about: e.target.value })} maxLength={2000} />
               </label>
+              <ManifestoFileInput file={manifestoFile} onChange={setManifestoFile} />
               <div className="flex items-center justify-between gap-3">
                 <RequiredNote />
                 <button disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-slate-400">

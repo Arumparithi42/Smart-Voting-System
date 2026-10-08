@@ -1,3 +1,6 @@
+import mongoose from 'mongoose';
+import StoredFile from '../models/StoredFile.js';
+import { sendStoredFile } from '../middleware/upload.js';
 import Election from '../models/Election.js'; 
 import Candidate from '../models/Candidate.js';
 import CandidateApplication from '../models/CandidateApplication.js';
@@ -64,7 +67,12 @@ export const createElection = async (req, res) => {
       if (createdCandidates.length) await Candidate.deleteMany({ _id: { $in: createdCandidates.map((c) => c._id) } }).catch(() => {});
       throw error;
     }
-    res.status(201).json({ message: 'Election created successfully', election: newElection });
+    res.status(201).json({
+      message: 'Election created successfully',
+      election: newElection,
+      // In the order given, so the form can upload each candidate's manifesto.
+      candidates: createdCandidates.map((c) => ({ _id: c._id, name: c.name })),
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error creating election', error: error.message });
   }
@@ -431,10 +439,24 @@ export const approveApplication = async (req, res) => {
       manifesto: application.manifesto,
       promises: application.promises,
       applicationId: application._id,
-      votes: 0
+      votes: 0,
+      // The applicant's own manifesto file becomes the candidate's public
+      // manifesto document - the admin doesn't upload it again.
+      documents: application.manifestoFile?.fileId ? [{
+        fileId: application.manifestoFile.fileId,
+        docType: 'MANIFESTO',
+        title: 'Manifesto',
+        filename: application.manifestoFile.filename,
+        contentType: application.manifestoFile.contentType,
+        size: application.manifestoFile.size,
+        uploadedAt: application.manifestoFile.uploadedAt || new Date(),
+      }] : [],
     });
     
     await newCandidate.save();
+    if (application.manifestoFile?.fileId) {
+      await StoredFile.updateOne({ _id: application.manifestoFile.fileId, kind: 'application-manifesto' }, { $set: { kind: 'candidate-document' } });
+    }
 
     // Attach Official Candidate into Election array
     election.candidates.push(newCandidate._id);
@@ -449,6 +471,21 @@ export const approveApplication = async (req, res) => {
     res.status(200).json({ message: 'Application approved and candidate instantiated successfully.', application });
   } catch (error) {
     res.status(500).json({ message: 'Error approving application', error: error.message });
+  }
+};
+
+// Admin: view an applicant's manifesto file while reviewing the application.
+export const getApplicationManifesto = async (req, res) => {
+  try {
+    const { applicationId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(applicationId)) return res.status(404).json({ message: 'File not found' });
+    const application = await CandidateApplication.findById(applicationId).select('manifestoFile');
+    if (!application?.manifestoFile?.fileId) return res.status(404).json({ message: 'File not found' });
+    const file = await StoredFile.findOne({ _id: application.manifestoFile.fileId, kind: { $in: ['application-manifesto', 'candidate-document'] } });
+    if (!file) return res.status(404).json({ message: 'File not found' });
+    sendStoredFile(res, file);
+  } catch (error) {
+    res.status(500).json({ message: 'Error loading file', error: error.message });
   }
 };
 

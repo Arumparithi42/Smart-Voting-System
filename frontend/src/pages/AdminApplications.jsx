@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { toast } from 'react-toastify';
 import { useConfirm } from '../components/ui/ConfirmDialog';
+import { openAuthedFile } from '../utils/media';
 
 const AdminApplications = () => {
   const confirm = useConfirm();
@@ -117,16 +118,29 @@ const AdminApplications = () => {
 
                  <div className="bg-white p-4 rounded shadow-sm mb-6">
                    <h3 className="font-bold text-lg mb-2">Manifesto</h3>
-                   <p className="text-gray-700 whitespace-pre-wrap">{selectedApp.manifesto}</p>
+                   {selectedApp.manifesto
+                     ? <p className="text-gray-700 whitespace-pre-wrap">{selectedApp.manifesto}</p>
+                     : !selectedApp.manifestoFile?.fileId && <p className="text-gray-500 text-sm">No manifesto provided (optional).</p>}
+                   {selectedApp.manifestoFile?.fileId && (
+                     <p className="mt-2 text-sm">
+                       <strong>Attached file:</strong>{' '}
+                       <button type="button" onClick={() => openAuthedFile(`/api/admin/candidate-applications/${selectedApp._id}/manifesto-file`).catch(() => toast.error('Could not open the file.'))} className="text-blue-700 hover:underline">
+                         {selectedApp.manifestoFile.filename}
+                       </button>
+                       <span className="block text-xs text-gray-500">Uploaded by the applicant. It becomes the candidate&apos;s public manifesto when approved.</span>
+                     </p>
+                   )}
                  </div>
 
                  <div className="bg-white p-4 rounded shadow-sm mb-6">
                    <h3 className="font-bold text-lg mb-2">Promises</h3>
-                   <ul className="list-disc pl-5">
-                     {selectedApp.promises?.map((promise, i) => (
-                       <li key={i} className="text-gray-700">{promise}</li>
-                     ))}
-                   </ul>
+                   {selectedApp.promises?.filter(Boolean).length ? (
+                     <ul className="list-disc pl-5">
+                       {selectedApp.promises.filter(Boolean).map((promise, i) => (
+                         <li key={i} className="text-gray-700">{promise}</li>
+                       ))}
+                     </ul>
+                   ) : <p className="text-gray-500 text-sm">No promises listed (optional).</p>}
                  </div>
                  
                  {selectedApp.status === 'pending' ? (

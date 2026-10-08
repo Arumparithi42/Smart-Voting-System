@@ -4,6 +4,8 @@ import axiosInstance from '../utils/axiosInstance';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import Req, { RequiredNote } from '../components/ui/Req';
+import ManifestoFileInput from '../components/documents/ManifestoFileInput';
+import { openAuthedFile } from '../utils/media';
 
 const ApplyCandidate = () => {
   const { user } = useUser();
@@ -11,6 +13,8 @@ const ApplyCandidate = () => {
   
   const [elections, setElections] = useState([]);
   const [myApplications, setMyApplications] = useState([]);
+  const [manifestoFile, setManifestoFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     electionId: '',
     fullName: user?.fullName || '',
@@ -63,12 +67,25 @@ const ApplyCandidate = () => {
   const submitApplication = async (e) => {
     e.preventDefault();
     if (!formData.electionId) return toast.error("Please select an election.");
+    // Multipart, so the optional manifesto file travels with the
+    // application. Manifesto text and promises are optional; blank promises
+    // are dropped.
+    const body = new FormData();
+    Object.entries(formData).forEach(([key, value]) => {
+      if (key !== 'promises' && typeof value === 'string' && value.trim()) body.append(key, value.trim());
+    });
+    body.append('promises', JSON.stringify(formData.promises.map((p) => p.trim()).filter(Boolean)));
+    if (manifestoFile) body.append('manifestoFile', manifestoFile);
+    setSubmitting(true);
     try {
-      await axiosInstance.post('/api/applications', formData);
+      await axiosInstance.post('/api/applications', body);
       toast.success("Application submitted successfully!");
+      setManifestoFile(null);
       fetchAppData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to submit application.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -90,6 +107,14 @@ const ApplyCandidate = () => {
                     {app.status.toUpperCase()}
                   </span>
                 </p>
+                {app.manifestoFile?.fileId && (
+                  <p className="mt-1">
+                    <strong>Manifesto file:</strong>{' '}
+                    <button type="button" onClick={() => openAuthedFile(`/api/applications/${app._id}/manifesto-file`).catch(() => toast.error('Could not open the file.'))} className="text-blue-700 hover:underline">
+                      {app.manifestoFile.filename}
+                    </button>
+                  </p>
+                )}
                 {app.status === 'rejected' && (
                   <p className="mt-2 text-red-600"><strong>Rejection Reason:</strong> {app.rejectionReason}</p>
                 )}
@@ -160,15 +185,17 @@ const ApplyCandidate = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Manifesto<Req /></label>
-            <textarea name="manifesto" value={formData.manifesto} onChange={handleChange} className="w-full border p-2 rounded mt-1" rows="4" required />
+            <label className="block text-sm font-medium">Manifesto (optional)</label>
+            <textarea name="manifesto" value={formData.manifesto} onChange={handleChange} className="w-full border p-2 rounded mt-1" rows="4" placeholder="Write your manifesto here, and/or attach it as a file below" />
           </div>
 
+          <ManifestoFileInput file={manifestoFile} onChange={setManifestoFile} />
+
           <div>
-            <label className="block text-sm font-medium mb-2">Promises</label>
+            <label className="block text-sm font-medium mb-2">Promises (optional)</label>
             {formData.promises.map((promise, i) => (
               <div key={i} className="flex mb-2">
-                <input type="text" value={promise} onChange={(e) => handlePromiseChange(i, e.target.value)} className="w-full border p-2 rounded mr-2" placeholder="e.g. Improve infrastructure" required />
+                <input type="text" value={promise} onChange={(e) => handlePromiseChange(i, e.target.value)} className="w-full border p-2 rounded mr-2" placeholder="e.g. Improve infrastructure" aria-label={`Promise ${i + 1}`} />
                 {formData.promises.length > 1 && (
                   <button type="button" onClick={() => removePromise(i)} className="bg-red-500 text-white px-3 py-2 rounded">Remove</button>
                 )}
@@ -177,8 +204,8 @@ const ApplyCandidate = () => {
             <button type="button" onClick={addPromise} className="mt-2 bg-blue-100 text-blue-700 px-4 py-2 rounded font-semibold">+ Add Promise</button>
           </div>
 
-          <button type="submit" className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 mt-6 transition duration-200">
-            Submit Application
+          <button type="submit" disabled={submitting} className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 mt-6 transition duration-200 disabled:bg-gray-400">
+            {submitting ? 'Submitting…' : 'Submit Application'}
           </button>
         </form>
       </div>

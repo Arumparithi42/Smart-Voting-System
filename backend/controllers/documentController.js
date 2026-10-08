@@ -23,7 +23,7 @@ const callerRole = async (req) => {
 };
 const isStaffRole = (role) => role === 'admin' || role === 'officer';
 
-const storeValidated = async (files, kind, ownerClerkId) => {
+export const storeValidated = async (files, kind, ownerClerkId) => {
   const detected = files.map((f) => detectFileType(f.buffer));
   const bad = files.find((f, i) => !detected[i] || !ALLOWED(detected[i].type));
   if (bad) {

@@ -13,6 +13,7 @@ import {
   updateUserRole,
   getApplications,
   getAdminApplicationById,
+  getApplicationManifesto,
   approveApplication,
   rejectApplication
 } from '../controllers/adminController.js';
@@ -138,6 +139,7 @@ router.get('/elections/:electionId/live-results', getLiveResults);
 // Candidate Registration Application Admin Operations
 router.get('/candidate-applications', getApplications);
 router.get('/candidate-applications/:applicationId', getAdminApplicationById);
+router.get('/candidate-applications/:applicationId/manifesto-file', getApplicationManifesto);
 router.post('/candidate-applications/:applicationId/approve', approveApplication);
 router.post('/candidate-applications/:applicationId/reject', rejectApplication);
 
