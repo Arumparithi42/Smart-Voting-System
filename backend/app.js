@@ -67,6 +67,7 @@ import adminRoutes from './routes/admin.js';
 import votingRoutes from './routes/voting.js';
 import voterRoutes from './routes/voter.js';
 import applicationRoutes from './routes/applications.js';
+import contactRoutes from './routes/contact.js';
 import officerRoutes from './routes/officer.js';
 import complaintRoutes from './routes/complaints.js';
 import notificationRoutes from './routes/notifications.js';
@@ -90,6 +91,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Base route
 app.get('/', (req, res) => {

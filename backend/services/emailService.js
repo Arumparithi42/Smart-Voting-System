@@ -14,7 +14,7 @@
 //                           exercise the failed-delivery / retry path).
 //
 // To plug in an HTTP-API provider instead, add a branch to sendEmail() -
-// callers only depend on sendEmail({ to, subject, text, html }).
+// callers only depend on sendEmail({ to, subject, text, html, replyTo? }).
 import nodemailer from 'nodemailer';
 
 let smtpTransport = null;
@@ -49,11 +49,11 @@ const getSmtpTransport = () => {
 
 export const getEmailProvider = () => (process.env.EMAIL_PROVIDER || 'console').toLowerCase();
 
-export async function sendEmail({ to, subject, text, html }) {
+export async function sendEmail({ to, subject, text, html, replyTo }) {
   if (!to) throw new Error('Recipient email address is required');
 
   if (senderOverride) {
-    return senderOverride({ to, subject, text, html });
+    return senderOverride({ to, subject, text, html, replyTo });
   }
 
   const provider = getEmailProvider();
@@ -61,13 +61,13 @@ export async function sendEmail({ to, subject, text, html }) {
   if (provider === 'console') {
     // DEV-ONLY: nothing leaves the server. Only aggregate result content
     // is ever sent through here, so this log never contains ballot data.
-    console.log(`[CONSOLE EMAIL PROVIDER] To: ${to}\nSubject: ${subject}\n${text}\n[end of email - DEV MODE, not actually sent]`);
+    console.log(`[CONSOLE EMAIL PROVIDER] To: ${to}${replyTo ? `\nReply-To: ${replyTo}` : ''}\nSubject: ${subject}\n${text}\n[end of email - DEV MODE, not actually sent]`);
     return { provider: 'console', delivered: true };
   }
 
   if (provider === 'smtp') {
     const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
-    const info = await getSmtpTransport().sendMail({ from, to, subject, text, html });
+    const info = await getSmtpTransport().sendMail({ from, to, subject, text, html, ...(replyTo ? { replyTo } : {}) });
     return { provider: 'smtp', delivered: true, messageId: info.messageId };
   }
 

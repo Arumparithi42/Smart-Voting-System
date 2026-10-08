@@ -73,8 +73,8 @@ export default function HomeElections({ hideWhenEmpty = false }) {
     message = (
       <span className="text-slate-700">
         No ongoing or upcoming elections are featured right now.
-        {role === 'admin' && <> Choose <strong>Yes</strong> for &quot;Show this election on the home page&quot; or tick <strong>Show on home page</strong> in Manage Elections.</>}{' '}
-        <Link to="/elections" className="font-semibold text-blue-700 underline">See all elections</Link>
+        {role === 'admin' && <> Choose <strong>Yes</strong> for &quot;Show this election on the home page&quot; or tick <strong>Show on home page</strong> in Manage Elections.</>}
+        {role && <>{' '}<Link to="/elections" className="font-semibold text-blue-700 underline">See all elections</Link></>}
       </span>
     );
   } else if (!data && hideWhenEmpty) {

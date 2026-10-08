@@ -8,7 +8,6 @@ import BackButton from '../ui/BackButton';
 
 const LINKS = [
   { to: '/', label: 'Home' },
-  { to: '/elections', label: 'Elections' },
   { to: '/contact', label: 'Contact' },
 ];
 
@@ -16,7 +15,7 @@ const Header = () => {
   const { user } = useUser();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const links = user ? [...LINKS.slice(0, 2), { to: '/dashboard', label: 'Dashboard' }, ...LINKS.slice(2)] : LINKS;
+  const links = user ? [LINKS[0], { to: '/dashboard', label: 'Dashboard' }, ...LINKS.slice(1)] : LINKS;
   const linkClass = (to) => `rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
     location.pathname === to ? 'text-orange-600' : 'text-blue-900 hover:text-amber-600'
   }`;

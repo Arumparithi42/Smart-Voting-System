@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 const MONGO_TEST_URI = process.env.MONGO_TEST_URI;
 // The chatbot test asks more than the production per-minute limit.
 process.env.CHATBOT_RATE_LIMIT_PER_MIN ??= '1000';
+process.env.CONTACT_RATE_LIMIT_PER_15MIN ??= '7';
 
 mock.module('@clerk/express', {
   namedExports: {
@@ -1203,4 +1204,42 @@ test('candidate application: optional manifesto/promises; applicant manifesto fi
   // createElection returns the created candidates (ids for per-candidate manifestos)
   const created = await api('POST', '/api/admin/elections', { as: ADMIN, body: { title: 'Cands', startTime: new Date(Date.now() + hour).toISOString(), endTime: new Date(Date.now() + 2 * hour).toISOString(), candidates: [{ name: 'One' }, { name: 'Two' }] } });
   assert.deepEqual(created.data.candidates.map((c) => c.name), ['One', 'Two']);
+});
+
+test('contact form: public messages are emailed to the site owner, validated and rate-limited', { skip }, async () => {
+  const previousTo = process.env.CONTACT_EMAIL_TO;
+  process.env.CONTACT_EMAIL_TO = 'owner@college.test';
+  const before = sentEmails.length;
+  try {
+    const ok = await api('POST', '/api/contact', { body: { name: 'Visitor', email: 'Visitor@Example.com', subject: 'Question\r\nBcc: x@evil.test', message: 'How do I register as a voter?' } });
+    assert.equal(ok.status, 200);
+    const mail = sentEmails.at(-1);
+    assert.equal(sentEmails.length, before + 1);
+    assert.equal(mail.to, 'owner@college.test');
+    assert.equal(mail.replyTo, 'visitor@example.com', 'owner can reply directly');
+    assert.ok(!/[\r\n]/.test(mail.subject), 'no header injection via subject');
+    assert.ok(mail.subject.startsWith('[eVote Contact] Question'));
+    assert.ok(mail.text.includes('How do I register as a voter?'));
+
+    // Validation
+    assert.equal((await api('POST', '/api/contact', { body: { email: 'not-an-email', subject: 's', message: 'hello there' } })).status, 400);
+    assert.equal((await api('POST', '/api/contact', { body: { email: 'a@b.test', subject: '', message: 'hello there' } })).status, 400);
+    assert.equal((await api('POST', '/api/contact', { body: { email: 'a@b.test', subject: 's', message: '' } })).status, 400);
+    // Spam trap: accepted but never emailed
+    const count = sentEmails.length;
+    assert.equal((await api('POST', '/api/contact', { body: { email: 'a@b.test', subject: 's', message: 'buy now!!', website: 'spam.test' } })).status, 200);
+    assert.equal(sentEmails.length, count);
+    // No recipient configured -> clear failure, nothing sent
+    process.env.CONTACT_EMAIL_TO = '';
+    const savedUser = process.env.EMAIL_USER; delete process.env.EMAIL_USER;
+    assert.equal((await api('POST', '/api/contact', { body: { email: 'a@b.test', subject: 's', message: 'hello there' } })).status, 503);
+    if (savedUser !== undefined) process.env.EMAIL_USER = savedUser;
+    // Rate limit (5 per 15 minutes per IP by default; 7 in this test run)
+    process.env.CONTACT_EMAIL_TO = 'owner@college.test';
+    let last;
+    for (let i = 0; i < 6; i += 1) last = await api('POST', '/api/contact', { body: { email: 'a@b.test', subject: 's', message: 'hello there' } });
+    assert.equal(last.status, 429);
+  } finally {
+    if (previousTo === undefined) delete process.env.CONTACT_EMAIL_TO; else process.env.CONTACT_EMAIL_TO = previousTo;
+  }
 });
