@@ -58,9 +58,10 @@ const Home = () => {
         </div>
 
       </section> */}
-      <Hero/>
-      {/* Elections the Admin chose to feature on the home page */}
+      {/* Elections the Admin chose to feature on the home page - first, so
+          they are visible without scrolling past the hero */}
       <HomeElections />
+      <Hero/>
       {/* Hero Section End  */}
 
       {/* <section>

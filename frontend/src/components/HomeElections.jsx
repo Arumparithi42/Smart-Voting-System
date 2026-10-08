@@ -4,6 +4,7 @@ import { CalendarClock, CalendarDays, Pause, Play, Vote } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
 import ElectionCountdown from './ElectionCountdown';
 import { formatDateTime } from '../utils/electionStages';
+import useUserRole from '../hooks/useUserRole';
 
 const SECONDS_PER_CARD = 7;
 
@@ -35,7 +36,7 @@ function TickerCard({ election, onStageChange, hidden = false }) {
         ) : (
           <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">Upcoming</span>
         )}
-        {election.candidateCount > 0 && <span className="text-xs text-slate-500">{election.candidateCount} candidates</span>}
+        {election.candidateCount > 0 && <span className="text-xs text-slate-500">{election.candidateCount} {election.candidateCount === 1 ? "candidate" : "candidates"}</span>}
       </div>
       <h3 className="mt-2 truncate text-base font-bold text-slate-900" title={election.title}>{election.title}</h3>
       <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-600">
@@ -132,42 +133,74 @@ function TickerRow({ title, icon, accent, elections, empty, onStageChange }) {
   );
 }
 
+const REFRESH_MS = 60_000;
+
 // Home page: elections the Admin chose to feature ("Show this election on
 // the home page" = Yes), loaded live from the backend. Elections set to No
-// are never returned by /api/home-elections.
+// are never returned by /api/home-elections. Shown at the top of the home
+// page and refreshed every minute (and when the tab regains focus), so a
+// newly featured election appears without a manual reload.
 export default function HomeElections() {
+  const { role } = useUserRole();
   const [data, setData] = useState(null);
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(() => {
-    axiosInstance.get('/api/home-elections').then((res) => setData(res.data)).catch(() => setData({ ongoing: [], upcoming: [] }));
+    axiosInstance.get('/api/home-elections')
+      .then((res) => { setData(res.data); setFailed(false); })
+      .catch(() => setFailed(true));
   }, []);
-  useEffect(() => { load(); }, [load]);
 
-  if (!data) return null;
-  if (!data.ongoing.length && !data.upcoming.length) return null;
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, REFRESH_MS);
+    window.addEventListener('focus', load);
+    return () => { clearInterval(timer); window.removeEventListener('focus', load); };
+  }, [load]);
+
+  const nothingFeatured = data && !data.ongoing.length && !data.upcoming.length;
 
   return (
-    <section className="bg-white/60 py-10" aria-label="Featured elections">
-      <div className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6">
-        <TickerRow
-          title="Ongoing Elections"
-          icon={<Vote className="h-6 w-6" aria-hidden="true" />}
-          accent="text-green-800"
-          elections={data.ongoing}
-          empty="No featured elections are open for voting right now."
-          onStageChange={load}
-        />
-        <TickerRow
-          title="Upcoming Elections"
-          icon={<CalendarClock className="h-6 w-6" aria-hidden="true" />}
-          accent="text-blue-900"
-          elections={data.upcoming}
-          empty="No featured upcoming elections."
-          onStageChange={load}
-        />
-        <div className="text-center">
-          <Link to="/elections" className="inline-block rounded-full border-2 border-blue-900 px-6 py-2.5 font-semibold text-blue-900 hover:bg-blue-50">See all elections</Link>
-        </div>
+    <section className="border-b border-slate-200 bg-white/70 py-8" aria-label="Featured elections">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6">
+        {failed && !data ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200" role="alert">
+            <span>Featured elections could not be loaded. Please check that the server is running and up to date.</span>
+            <button type="button" onClick={load} className="rounded-lg bg-white px-3 py-1.5 font-semibold ring-1 ring-red-200 hover:bg-red-100">Retry</button>
+          </div>
+        ) : !data ? (
+          <p className="text-sm text-slate-500" role="status">Loading featured elections…</p>
+        ) : nothingFeatured ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 text-sm text-slate-600 ring-1 ring-slate-200">
+            <span>
+              No ongoing or upcoming elections are featured on the home page right now.
+              {role === 'admin' && <> Choose <strong>Yes</strong> for &quot;Show this election on the home page&quot; when creating an election, or tick <strong>Show on home page</strong> in Manage Elections.</>}
+            </span>
+            <Link to="/elections" className="font-semibold text-blue-800 hover:underline">See all elections</Link>
+          </div>
+        ) : (
+          <>
+            <TickerRow
+              title="Ongoing Elections"
+              icon={<Vote className="h-6 w-6" aria-hidden="true" />}
+              accent="text-green-800"
+              elections={data.ongoing}
+              empty="No featured elections are open for voting right now."
+              onStageChange={load}
+            />
+            <TickerRow
+              title="Upcoming Elections"
+              icon={<CalendarClock className="h-6 w-6" aria-hidden="true" />}
+              accent="text-blue-900"
+              elections={data.upcoming}
+              empty="No featured upcoming elections."
+              onStageChange={load}
+            />
+            <div className="text-center">
+              <Link to="/elections" className="inline-block rounded-full border-2 border-blue-900 px-6 py-2 font-semibold text-blue-900 hover:bg-blue-50">See all elections</Link>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

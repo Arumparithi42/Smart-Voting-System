@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { CheckCircle2, ClipboardList, Download, PlusCircle } from "lucide-react";
@@ -27,7 +27,12 @@ const ElectionList = ({ isAdmin }) => {
   const tabs = isAdmin ? ADMIN_TABS : VOTER_TABS;
   const [stage, setStage] = useStageFilter(tabs);
 
+  // The role arrives after the first render, so a slow voter-mode request
+  // can finish after the admin one; only the latest request may update state.
+  const latestRequest = useRef(0);
+
   const load = useCallback(async () => {
+    const requestId = ++latestRequest.current;
     try {
       const response = await axiosInstance.get("/api/elections");
       let list = response.data;
@@ -39,12 +44,14 @@ const ElectionList = ({ isAdmin }) => {
           .catch(() => null)));
         list = statuses.filter(Boolean).sort((a, b) => new Date(b.votedAt) - new Date(a.votedAt));
       }
+      if (requestId !== latestRequest.current) return;
       setElections(list);
       setError("");
     } catch (err) {
+      if (requestId !== latestRequest.current) return;
       setError(err.response?.data?.message || "Unable to load elections.");
     } finally {
-      setLoading(false);
+      if (requestId === latestRequest.current) setLoading(false);
     }
   }, [isAdmin]);
 
