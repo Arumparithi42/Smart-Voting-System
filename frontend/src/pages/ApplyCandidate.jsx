@@ -94,35 +94,6 @@ const ApplyCandidate = () => {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-[#1E3A8A] mb-8">Candidate Applications</h1>
 
-        {myApplications.length > 0 && (
-          <div className="mb-10 bg-white p-6 shadow rounded-md">
-            <h2 className="text-xl font-semibold mb-4 text-[#1E3A8A]">My Applications</h2>
-            {myApplications.map(app => (
-              <div key={app._id} className="border-b py-4">
-                <p><strong>Election:</strong> {app.electionId?.title}</p>
-                <p><strong>Party:</strong> {app.partyName}</p>
-                <p>
-                  <strong>Status:</strong> 
-                  <span className={`ml-2 px-2 py-1 rounded text-sm text-white ${app.status === 'pending' ? 'bg-yellow-500' : app.status === 'approved' ? 'bg-green-500' : 'bg-red-500'}`}>
-                    {app.status.toUpperCase()}
-                  </span>
-                </p>
-                {app.manifestoFile?.fileId && (
-                  <p className="mt-1">
-                    <strong>Manifesto file:</strong>{' '}
-                    <button type="button" onClick={() => openAuthedFile(`/api/applications/${app._id}/manifesto-file`).catch(() => toast.error('Could not open the file.'))} className="text-blue-700 hover:underline">
-                      {app.manifestoFile.filename}
-                    </button>
-                  </p>
-                )}
-                {app.status === 'rejected' && (
-                  <p className="mt-2 text-red-600"><strong>Rejection Reason:</strong> {app.rejectionReason}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
         <form onSubmit={submitApplication} className="bg-white p-6 shadow rounded-md space-y-6">
           <RequiredNote />
           <h2 className="text-2xl font-bold text-[#1E3A8A] mb-4">Apply for a New Election</h2>
@@ -208,6 +179,35 @@ const ApplyCandidate = () => {
             {submitting ? 'Submitting…' : 'Submit Application'}
           </button>
         </form>
+
+        {myApplications.length > 0 && (
+          <div className="mt-10 bg-white p-6 shadow rounded-md">
+            <h2 className="text-xl font-semibold mb-4 text-[#1E3A8A]">My Applications</h2>
+            {myApplications.map(app => (
+              <div key={app._id} className="border-b py-4">
+                <p><strong>Election:</strong> {app.electionId?.title}</p>
+                <p><strong>Party:</strong> {app.partyName}</p>
+                <p>
+                  <strong>Status:</strong> 
+                  <span className={`ml-2 px-2 py-1 rounded text-sm text-white ${app.status === 'pending' ? 'bg-yellow-500' : app.status === 'approved' ? 'bg-green-500' : 'bg-red-500'}`}>
+                    {app.status.toUpperCase()}
+                  </span>
+                </p>
+                {app.manifestoFile?.fileId && (
+                  <p className="mt-1">
+                    <strong>Manifesto file:</strong>{' '}
+                    <button type="button" onClick={() => openAuthedFile(`/api/applications/${app._id}/manifesto-file`).catch(() => toast.error('Could not open the file.'))} className="text-blue-700 hover:underline">
+                      {app.manifestoFile.filename}
+                    </button>
+                  </p>
+                )}
+                {app.status === 'rejected' && (
+                  <p className="mt-2 text-red-600"><strong>Rejection Reason:</strong> {app.rejectionReason}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
