@@ -15,6 +15,7 @@ export const NOTIFICATION_TYPES = [
   // Admin inbox
   'COMPLAINT_SUBMITTED',
   'FEEDBACK_SUBMITTED',
+  'CANDIDATE_APPLICATION_SUBMITTED',
   // Replies to the user
   'FEEDBACK_UPDATED',
 ];

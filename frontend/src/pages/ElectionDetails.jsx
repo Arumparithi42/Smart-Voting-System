@@ -8,6 +8,7 @@ import ElectionCountdown from '../components/ElectionCountdown';
 import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { formatDateTime, stageAt } from '../utils/electionStages';
+import CandidateManifestoFiles from '../components/documents/CandidateManifestoFiles';
 import { serverNow } from '../utils/serverClock';
 
 function CandidateModal({ candidate, onClose }) {
@@ -30,20 +31,7 @@ function CandidateModal({ candidate, onClose }) {
         {candidate.occupation && <p className="mt-1 text-sm"><span className="font-semibold">Occupation:</span> {candidate.occupation}</p>}
         {candidate.about && <><h3 className="mt-4 font-semibold">About</h3><p className="whitespace-pre-wrap text-sm text-slate-700">{candidate.about}</p></>}
         {candidate.manifesto && <><h3 className="mt-4 font-semibold">Manifesto</h3><p className="whitespace-pre-wrap text-sm text-slate-700">{candidate.manifesto}</p></>}
-        {candidate.documents?.length > 0 && (
-          <>
-            <h3 className="mt-4 font-semibold">Manifesto documents</h3>
-            <ul className="mt-1 space-y-1">
-              {candidate.documents.map((d) => (
-                <li key={d.fileId}>
-                  <a href={mediaUrl(`/api/candidates/documents/${d.fileId}`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline">
-                    <FileText className="h-4 w-4" aria-hidden="true" /> {d.title || d.filename}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+        <CandidateManifestoFiles candidate={candidate} className="mt-4" />
         {candidate.promises?.length > 0 && (
           <><h3 className="mt-4 font-semibold">Key promises</h3><ul className="list-disc pl-5 text-sm text-slate-700">{candidate.promises.map((p, i) => <li key={i}>{p}</li>)}</ul></>
         )}

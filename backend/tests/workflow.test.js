@@ -1186,6 +1186,20 @@ test('candidate application: optional manifesto/promises; applicant manifesto fi
   assert.equal((await fetch(`${baseUrl}/api/candidates/documents/${cand.documents[0].fileId}`)).status, 200, 'public manifesto');
   assert.equal((await getOwn('voter_1')).status, 200, 'applicant can still open it');
 
+  // Every admin is notified of each new application; officers/voters are not
+  const appNotes = async (as) => (await api('GET', '/api/notifications?limit=100', { as })).data.notifications
+    .filter((n) => n.type === 'CANDIDATE_APPLICATION_SUBMITTED');
+  const adminNotes = await appNotes(ADMIN);
+  assert.ok(adminNotes.some((n) => n.message.includes('File Candidate') && n.message.includes('Application Election')));
+  assert.ok(adminNotes.some((n) => n.message.includes('No Manifesto')));
+  assert.ok((await appNotes(ADMIN_NONVOTER)).length >= 2, 'all admins notified');
+  assert.equal((await appNotes(OFFICER)).length, 0);
+  assert.equal((await appNotes('voter_1')).length, 0);
+  // Rejected -> resubmitted notifies again
+  assert.equal((await api('POST', `/api/admin/candidate-applications/${plain.data.application._id}/reject`, { as: ADMIN, body: { rejectionReason: 'Add party details' } })).status, 200);
+  assert.equal((await api('PUT', `/api/applications/${plain.data.application._id}`, { as: 'voter_2', body: { partyName: 'Unity' } })).status, 200);
+  assert.ok((await appNotes(ADMIN)).some((n) => n.title === 'Candidate Application Resubmitted' && n.message.includes('No Manifesto')));
+
   // createElection returns the created candidates (ids for per-candidate manifestos)
   const created = await api('POST', '/api/admin/elections', { as: ADMIN, body: { title: 'Cands', startTime: new Date(Date.now() + hour).toISOString(), endTime: new Date(Date.now() + 2 * hour).toISOString(), candidates: [{ name: 'One' }, { name: 'Two' }] } });
   assert.deepEqual(created.data.candidates.map((c) => c.name), ['One', 'Two']);

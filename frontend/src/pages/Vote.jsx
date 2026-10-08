@@ -10,6 +10,7 @@ import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
 import { useConfirm } from '../components/ui/ConfirmDialog';
 import { serverNow } from '../utils/serverClock';
 import { stageAt } from '../utils/electionStages';
+import CandidateManifestoFiles from '../components/documents/CandidateManifestoFiles';
 
 export default function Vote() {
   const [selectedCandidate, setSelectedCandidate] = useState('');
@@ -413,6 +414,12 @@ export default function Vote() {
                 <h4 className="font-semibold text-gray-800 text-lg border-b mb-2">Manifesto</h4>
                 <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{viewingCandidate.manifesto}</p>
               </div>
+            )}
+
+            <CandidateManifestoFiles candidate={viewingCandidate} className="mb-4" />
+
+            {!viewingCandidate.manifesto && !viewingCandidate.about && !viewingCandidate.promises?.length && !viewingCandidate.documents?.some((d) => d.docType === 'MANIFESTO') && (
+              <p className="mb-4 text-sm text-gray-500">This candidate hasn&apos;t shared a manifesto yet.</p>
             )}
 
             {viewingCandidate.promises && viewingCandidate.promises.length > 0 && (

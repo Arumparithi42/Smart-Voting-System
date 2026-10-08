@@ -204,6 +204,16 @@ export const notifyComplaintSubmitted = async (complaint) => notifyUsers(await a
   link: '/dashboard/admin/complaints',
 });
 
+// New (or resubmitted) candidate application -> every admin. Keyed on the
+// submission time, so a resubmission after rejection notifies again.
+export const notifyCandidateApplicationSubmitted = async (application, electionTitle, { resubmitted = false } = {}) => notifyUsers(await adminClerkIds(), {
+  stageKey: `candidate-application:${application._id}:${new Date(application.updatedAt || Date.now()).getTime()}`,
+  type: 'CANDIDATE_APPLICATION_SUBMITTED',
+  title: resubmitted ? 'Candidate Application Resubmitted' : 'New Candidate Application',
+  message: `${application.fullName} ${resubmitted ? 'resubmitted their application' : 'applied'} to be a candidate in "${electionTitle}".`,
+  link: '/admin/candidate-applications',
+});
+
 export const notifyFeedbackSubmitted = async (feedback) => notifyUsers(await adminClerkIds(), {
   stageKey: `feedback-submitted:${feedback.referenceId}`,
   type: 'FEEDBACK_SUBMITTED',

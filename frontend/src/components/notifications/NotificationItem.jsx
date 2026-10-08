@@ -1,5 +1,5 @@
 import { timeAgo } from '../../utils/timeAgo';
-import { Bell, CalendarClock, CheckCircle2, FilePen, FilePlus2, FileText, FileX2, MessageSquareHeart, MessageSquareWarning, Timer, Trophy, Vote } from 'lucide-react';
+import { Bell, CalendarClock, CheckCircle2, FilePen, FilePlus2, FileText, FileX2, MessageSquareHeart, MessageSquareWarning, Timer, Trophy, UserPlus, Vote } from 'lucide-react';
 
 const ICONS = {
   ELECTION_STARTING: CalendarClock,
@@ -14,6 +14,7 @@ const ICONS = {
   PROPOSAL_REJECTED: FileX2,
   COMPLAINT_SUBMITTED: MessageSquareWarning,
   FEEDBACK_SUBMITTED: MessageSquareHeart,
+  CANDIDATE_APPLICATION_SUBMITTED: UserPlus,
   FEEDBACK_UPDATED: MessageSquareHeart,
 };
 

@@ -4,6 +4,9 @@ import StoredFile from '../models/StoredFile.js';
 import { getEffectiveElectionStatus } from '../utils/electionStatus.js';
 import { storeValidated } from './documentController.js';
 import { sendStoredFile } from '../middleware/upload.js';
+import { notifyCandidateApplicationSubmitted } from '../services/notificationService.js';
+
+const quietly = (promise) => promise.catch((error) => console.error('Notification failed:', error.message));
 
 const MAX_PROMISES = 20;
 
@@ -86,6 +89,7 @@ export const createApplication = async (req, res) => {
         const replaced = await applyManifestoFile(existing, req);
         await existing.save();
         dropFile(replaced);
+        await quietly(notifyCandidateApplicationSubmitted(existing, election.title, { resubmitted: true }));
         return res.status(200).json({ message: 'Application resubmitted successfully', application: existing });
       } else {
         return res.status(400).json({ message: 'You have already submitted an application for this election.' });
@@ -113,6 +117,7 @@ export const createApplication = async (req, res) => {
 
     await applyManifestoFile(newApplication, req);
     await newApplication.save();
+    await quietly(notifyCandidateApplicationSubmitted(newApplication, election.title));
     res.status(201).json({ message: 'Application submitted successfully', application: newApplication });
   } catch (error) {
     res.status(error.status || 500).json({ message: error.status ? error.message : 'Error submitting application', error: error.message });
@@ -152,13 +157,15 @@ export const editApplication = async (req, res) => {
     const replaced = await applyManifestoFile(application, req);
 
     // If it was rejected, editing implicitly moves it back to pending
-    if (application.status === 'rejected') {
+    const resubmitted = application.status === 'rejected';
+    if (resubmitted) {
       application.status = 'pending';
       application.rejectionReason = undefined;
     }
 
     await application.save();
     dropFile(replaced);
+    if (resubmitted) await quietly(notifyCandidateApplicationSubmitted(application, election.title, { resubmitted: true }));
     res.status(200).json({ message: 'Application updated', application });
   } catch (error) {
     res.status(error.status || 500).json({ message: error.status ? error.message : 'Error editing application', error: error.message });
