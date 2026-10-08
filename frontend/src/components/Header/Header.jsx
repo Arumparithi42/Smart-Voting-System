@@ -9,7 +9,6 @@ import BackButton from '../ui/BackButton';
 const LINKS = [
   { to: '/', label: 'Home' },
   { to: '/elections', label: 'Elections' },
-  { to: '/verify-receipt', label: 'Verify Receipt' },
   { to: '/contact', label: 'Contact' },
 ];
 

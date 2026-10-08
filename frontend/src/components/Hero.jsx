@@ -1,30 +1,32 @@
 // import Image from "next/image"
-import { Link } from "react-router-dom"
-import { ArrowRight, Vote } from 'lucide-react'
+import { CheckCircle2, Vote } from 'lucide-react'
 
 export default function Component() {
     return (
-        <div className="min-h-[calc(100vh-3.5rem)] overflow-hidden bg-gradient-to-r from-yellow-100 via-yellow-100 to-white">
+        <div className="overflow-hidden bg-gradient-to-r from-yellow-100 via-yellow-100 to-white">
             
             {/* Hero Section */}
-            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 md:py-20">
+            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 md:py-16">
                 <div className="grid md:grid-cols-2 gap-12 items-center">
                     <div className="space-y-8">
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-blue-900 leading-tight">
                             Your Vote Matters in Shaping Our Future
                         </h1>
                         <p className="text-lg text-gray-600 max-w-md">
-                            Participate in secure online voting from anywhere. Every vote counts in building a stronger democracy.
+                            eVote is a Smart Voting System for secure online elections - from proposal and approval to voting, live monitoring and officially published results.
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <Link to='/elections' className="flex items-center justify-center space-x-2 bg-blue-900 text-white px-8 py-3 rounded-full hover:bg-blue-800 transition-colors">
-                                <span>Vote Now</span>
-                                <ArrowRight className="h-5 w-5" />
-                            </Link>
-                            <Link to='/verify-receipt' className="flex items-center justify-center space-x-2 border-2 border-blue-900 text-blue-900 px-8 py-3 rounded-full hover:bg-blue-50 transition-colors">
-                                <span>Verify Your Vote</span>
-                            </Link>
-                        </div>
+                        <ul className="space-y-3">
+                            {[
+                                'Only verified voters can vote - one person, one vote.',
+                                'Your choice stays secret; you get a receipt to confirm it was counted.',
+                                'Officially published results for every election.',
+                            ].map((text) => (
+                                <li key={text} className="flex items-start gap-3 text-gray-700">
+                                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" aria-hidden="true" />
+                                    <span>{text}</span>
+                                </li>
+                            ))}
+                        </ul>
                         <div className="flex items-center space-x-8 pt-4">
                             <div className="text-center">
                                 <p className="text-3xl font-bold text-amber-500">100%</p>
@@ -49,7 +51,7 @@ export default function Component() {
               height={600}
               className="relative z-10"
             /> */}
-                        <img src="/hero.png " alt="" width={600}
+                        <img src="/hero.png" alt="" width={600}
                             height={600} className="relative z-10" />
                         <div className="absolute top-5 right-5 bg-white p-4 rounded-xl shadow-lg z-20">
                             <div className="flex items-center space-x-2">

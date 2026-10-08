@@ -1,251 +1,101 @@
-import Hero from '../components/Hero'
-import HomeElections from '../components/HomeElections'
+import { Link, Navigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
+import {
+  BarChart3, Bell, ClipboardCheck, FileText, IdCard, LogIn, MessageSquareWarning, Receipt, ShieldCheck, Trophy, UserPlus, Users,
+} from 'lucide-react';
+import Hero from '../components/Hero';
+import HomeElections from '../components/HomeElections';
+import ElectionSpotlight from '../components/ElectionSpotlight';
 
+// What the Smart Voting System actually provides (each item is an existing
+// feature of this application).
+const FEATURES = [
+  { icon: ShieldCheck, title: 'Secure voting', text: 'Voters are verified against the voter registry with an OTP. Each voter can vote once per election, and every vote is recorded atomically.' },
+  { icon: ClipboardCheck, title: 'Election management', text: 'Election Officers propose elections; the Admin reviews, approves and schedules them from draft to voting to results.' },
+  { icon: FileText, title: 'Candidate information', text: 'Candidate profiles with party, background, promises and manifesto documents. Students can apply to stand as a candidate.' },
+  { icon: Bell, title: 'Election notifications', text: 'Live countdowns and reminders before an election starts, when voting opens and before it closes.' },
+  { icon: Receipt, title: 'Vote receipt', text: 'Every vote gets a receipt ID and a downloadable PDF to confirm it was counted - without ever revealing your choice.' },
+  { icon: Trophy, title: 'Official results', text: 'Results are published by the Admin after voting closes, and emailed to the voters who took part.' },
+  { icon: BarChart3, title: 'Election Officer monitoring', text: 'Officers monitor turnout and live totals while voting is open, and review results before they are published.' },
+  { icon: MessageSquareWarning, title: 'Complaints & feedback', text: 'Raise a complaint or send feedback straight to the Admin, with a reference ID and status you can track.' },
+];
+
+const STEPS = [
+  { icon: UserPlus, title: 'Create your account', text: 'Sign up and complete voter verification with your voter ID and OTP.' },
+  { icon: Users, title: 'Explore elections', text: 'See upcoming and ongoing elections and read about every candidate.' },
+  { icon: IdCard, title: 'Cast your vote', text: 'Vote securely while the election is open and keep your receipt.' },
+  { icon: Trophy, title: 'See the results', text: 'View the official results as soon as the Admin publishes them.' },
+];
+
+// Public landing page - only for visitors who are not signed in. Signed-in
+// users go straight to their Dashboard.
 const Home = () => {
+  const { isLoaded, isSignedIn } = useUser();
+  if (isLoaded && isSignedIn) return <Navigate to="/dashboard" replace />;
+
   return (
     <div>
-      {/* <Header /> */}
-      {/* Hero Section Start */}
-      {/* <section className='heroSection pt-[40px] 2xl:h-[800px]'>
-        <div className="container">
-          <div className="flex flex-col lg:flex-row gap-[90px] items-center justify-between px-[4%]">
-            <div>
-              <div className="lg:w-[570px]">
-                <h1 className="text-[30px] leading-[46px] text-headingColor font-[800] md:text-[50px] md:leading-[65px]">
-                  Streamlining LPG Gas Booking with Ease.
-                </h1>
-                <p className="paragraph">
-                  We're dedicated to making gas booking simple and efficient. With reliable service and timely deliveries, we ensure that every household receives the fuel they need without hassle. Join us in delivering convenience and safety to every home.
-                </p>
-                <button className="btn"  onClick={() => navigate('/gass')}>Book Your Cylinder</button>
-              </div>
-
-              <div className="mt-[20px] lg:mt-[25px] flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-[30px]">
-                <div>
-                  <h2 className="text-[30px] lg:text-[35px] font-[700] text-HeadingColor">
-                    30+
-                  </h2>
-                  <span className="w-[100px] h-2 bg-Yellow rounded-full block mt-[-14px]"></span>
-                  <p className="paragraph">Years of Service</p>
-                </div>
-                <div>
-                  <h2 className="text-[30px] lg:text-[35px] font-[700] text-HeadingColor">
-                    50+
-                  </h2>
-                  <span className="w-[100px] h-2 bg-Purple rounded-full block mt-[-14px]"></span>
-                  <p className="paragraph">Service Locations</p>
-                </div>
-                <div>
-                  <h2 className="text-[30px] lg:text-[35px] font-[700] text-HeadingColor">
-                    100%
-                  </h2>
-                  <span className="w-[100px] h-2 bg-SkyBlue rounded-full block mt-[-14px]"></span>
-                  <p className="paragraph">Customer Satisfaction</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-[30px] justify-end">
-              <div className="flex justify-center items-center rounded-xl">
-                <img src="/gass1.png" alt="" className="w-full bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-600 rounded-xl" />
-              </div>
-              <div className="mt-[30px]">
-                <img src="/gass1.png" alt="" className="w-full mb-[30px] bg-gradient-to-b from-purple-300 via-purple-500 to-purple-700 rounded-xl" />
-                <img src="/gass1.png" alt="" className="w-full bg-gradient-to-b from-sky-200 via-sky-400 to-sky-600 rounded-xl" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </section> */}
-      {/* Elections the Admin chose to feature on the home page - first, so
-          they are visible without scrolling past the hero */}
+      {/* Running ticker of featured upcoming / ongoing elections */}
       <HomeElections />
-      <Hero/>
-      {/* Hero Section End  */}
+      <Hero />
 
-      {/* <section>
-        <div className="container">
-          <div className="mx-auto lg:w-[470px]">
-            <h2 className='heading text-center'>
-              Providing the Best Service in the Town
-            </h2>
-            <p className="paragraph text-center">
-              World-Class care for everyone. Our health System offers are unmatched.
-              Expert Healthcare.
-            </p>
+      <section className="bg-white py-14 sm:py-20" aria-labelledby="features-heading">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 id="features-heading" className="text-3xl font-bold text-blue-900 sm:text-4xl">Everything an election needs, in one place</h2>
+            <p className="mt-3 text-gray-600">From the first proposal to the published result - secure, transparent and easy to use for voters, Election Officers and Admins.</p>
           </div>
+          <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map(({ icon: Icon, title, text }) => (
+              <li key={title} className="rounded-2xl bg-yellow-50/60 p-6 ring-1 ring-yellow-200/70 transition hover:-translate-y-0.5 hover:shadow-md">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-900 text-white">
+                  <Icon className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <h3 className="mt-4 text-lg font-bold text-blue-900">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">{text}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-[30px] mt-[30px] lg:mt-[55px]">
-            <div className="px-5 py-[30px]">
-              <div className="flex items-center justify-center">
-                <img src={icon01} alt="" />
-              </div>
+      <section className="bg-gradient-to-r from-yellow-100 via-yellow-50 to-white py-14 sm:py-20" aria-labelledby="how-heading">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <h2 id="how-heading" className="text-center text-3xl font-bold text-blue-900 sm:text-4xl">How it works</h2>
+          <ol className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map(({ icon: Icon, title, text }, i) => (
+              <li key={title} className="relative rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+                <span className="absolute -top-3 left-6 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-white">Step {i + 1}</span>
+                <Icon className="h-8 w-8 text-blue-900" aria-hidden="true" />
+                <h3 className="mt-3 font-bold text-blue-900">{title}</h3>
+                <p className="mt-1 text-sm text-gray-600">{text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
 
-              <div className='mt-[30px]'>
-                <h2 className='text-[26px] leading-9 text-HeadingColor font-[700] text-center'>
-                  Find a Doctor
-                </h2>
-                <p className='text-[16px] leading-7 text-TextColor font-[400] mt-4 text-center'>
-                  World-Class Care for everyone. Our health System Offers Unmateched. Expert HealCare. From the lab to the clinic.
-                </p>
-
-                <Link to='/doctors' className='w-[44px] h-[44px] rounded-full border border-solid border-[#181A1E] mt-[30px] mx-auto flex items-center justify-center group hover:bg-Color hover:border-none'>
-                  <BsArrowRight className='group-hover:text-white w-6 h-5' />
-                </Link>
-              </div>
-            </div>
-
-            <div className="px-5 py-[30px]">
-              <div className="flex items-center justify-center">
-                <img src={icon02} alt="" />
-              </div>
-
-              <div className='mt-[30px]'>
-                <h2 className='text-[26px] leading-9 text-HeadingColor font-[700] text-center'>
-                  Find a Location
-                </h2>
-                <p className='text-[16px] leading-7 text-TextColor font-[400] mt-4 text-center'>
-                  World-Class Care for everyone. Our health System Offers Unmateched. Expert HealCare. From the lab to the clinic.
-                </p>
-
-                <Link to='/doctors' className='w-[44px] h-[44px] rounded-full border border-solid border-[#181A1E] mt-[30px] mx-auto flex items-center justify-center group hover:bg-Color hover:border-none'>
-                  <BsArrowRight className='group-hover:text-white w-6 h-5' />
-                </Link>
-              </div>
-            </div>
-            <div className="px-5 py-[30px]">
-              <div className="flex items-center justify-center">
-                <img src={icon03} alt="" />
-              </div>
-
-              <div className='mt-[30px]'>
-                <h2 className='text-[26px] leading-9 text-HeadingColor font-[700] text-center'>
-                  Book an Appointment
-                </h2>
-                <p className='text-[16px] leading-7 text-TextColor font-[400] mt-4 text-center'>
-                  World-Class Care for everyone. Our health System Offers Unmateched. Expert HealCare. From the lab to the clinic.
-                </p>
-
-                <Link to='/doctors' className='w-[44px] h-[44px] rounded-full border border-solid border-[#181A1E] mt-[30px] mx-auto flex items-center justify-center group hover:bg-Color hover:border-none'>
-                  <BsArrowRight className='group-hover:text-white w-6 h-5' />
-                </Link>
-              </div>
-            </div>
-
+      <section className="bg-blue-900 py-12 text-white" aria-labelledby="cta-heading">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 text-center sm:px-6 md:flex-row md:text-left">
+          <div>
+            <h2 id="cta-heading" className="text-2xl font-bold sm:text-3xl">Ready to make your voice heard?</h2>
+            <p className="mt-2 text-blue-100">Sign in to see your elections, vote and track your receipts.</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link to="/sign-in" className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-semibold text-white hover:bg-amber-600">
+              <LogIn className="h-5 w-5" aria-hidden="true" /> Login
+            </Link>
+            <Link to="/sign-up" className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-blue-900 hover:bg-blue-50">
+              <UserPlus className="h-5 w-5" aria-hidden="true" /> Create account
+            </Link>
           </div>
         </div>
-      </section> */}
+      </section>
 
-      {/* <About /> */}
-      {/* 
-      <section>
-        <div className="container ">
-          <div className="mx-auto xl:w-[470px]">
-            <h2 className='heading text-center'>Our Medical Services</h2>
-            <p className="paragraph">World-Class care for everyone. Our health system offers unmatched,
-              expert health care.</p>
-          </div>
-
-          <ServicesList />
-        </div>
-      </section> */}
-
-      {/* <section>
-        <div className="container">
-          <div className="flex items-center justify-between flex-col lg:flex-row">
-            <div className="xl:w-[670px]">
-              <h2 className="heading">Get Virtual Treatment <br />anytime.</h2>
-
-              <ul className="pl-4">
-                <li className="paragraph">
-                  1. Schedule the appointment directly.
-                </li>
-                <li className="paragraph">
-                  2. Search for your physician here, and contact their office.
-                </li>
-                <li className="paragraph">
-                  3. View our hysicians who are accepting new patients, use the online scheduling .
-                </li>
-              </ul>
-              <Link to='/'>
-                <button className="btn">Learn More</button>
-              </Link>
-            </div>
-
-            <div className="relative z-10 xl:w-[770px] flex justify-end mt-[50px] lg:mt-0">
-              <img src={featureImg} alt="" className='w-3/4' />
-
-              <div className="w-[150px] lg:w-[248px] bg-white absolute bottom-[50px] left-0 md:bottom-[100px] md:left-5 z-20 p-2 pb-3 lg:pt-4 lg:pb-[26px] rounded-[10px]">
-                <div className="flex items-center justify-between gap-[6px] lg:gap-3">
-                  <p className="text-[10px] leading-[10px] lg:text-[14px] lg:leading-5 text-HeadingColor font-[600]">Wed, 15</p>
-                  <p className="text-[10px] leading-[10px] lg:text-[14px] lg:leading-5 text-Text font-[600]">02:00AM</p>
-                  <span className="w-5 h-5 lg:w-[34px] lg:h-[34px] flex items-center justify-center bg-Yellow rounded py-1 px-[6px] lg:py-3 lg:px-[9px]">
-                    <img src={videoIcon} alt="" />
-                  </span>
-                </div>
-
-                <div className="w-[65px] lg:w-[96px] bg-[#CCF0F3] py-1 px-2 lg:py-[6px] lg:px-[10px] text-[8px] leading-[8px] lg:text-[12px] lg:leading-4 text-SkyBlue font-[500] mt-2 lg:mt-4 rounded-full">
-                  Consultation
-                </div>
-
-                <div className="flex items-center gap-[6px] lg:gap-[10px] mt-2 lg:mt-[18px]">
-                  <img src={avatarIcon} alt="" />
-                  <h4 className="text-[10px] leading-3 lg:text-[16px] lg:leading-[22px] font-[700] text-HeadingColor">
-                    Shane Bahadur
-                  </h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section> */}
-      {/* 
-      <section>
-        <div className="container">
-          <div className="mx-auto xl:w-[470px]">
-            <h2 className='heading text-center'>Our Expert Doctors</h2>
-            <p className="paragraph text-center">World-Class care for everyone. Our health system offers unmatched,
-              expert health care.</p>
-          </div>
-          <DoctorsList />
-        </div>
-      </section> */}
-
-      {/* FAQ Section Start */}
-      {/* <section>
-        <div className="container">
-          <div className="flex justify-between gap-[50px] lg:gap-0">
-            <div className="w-1/2 hidden md:block">
-              <img src={faqImg} alt="" />
-            </div>
-
-            <div className="w-full md:w-1/2">
-              <h2 className="heading ">Most questions by our beloved patients</h2>
-
-              <FaqList />
-            </div>
-          </div>
-        </div>
-      </section> */}
-      {/* FAQ Section End */}
-
-
-      {/* Testimonials */}
-      {/* <section>
-        <div className="container">
-          <div className="mx-auto xl:w-[470px]">
-            <h2 className='heading text-center'>What Our Patients Say</h2>
-            <p className="paragraph text-center">World-Class care for everyone. Our health system offers unmatched,
-              expert health care.</p>
-          </div>
-          <Testimonial />
-        </div>
-      </section> */}
-      {/* Testimonials */}
-      {/* <Footer /> */}
+      {/* Bottom-right box: the same featured elections, one at a time */}
+      <ElectionSpotlight />
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;

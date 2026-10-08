@@ -13,7 +13,8 @@ const parentOf = (pathname) => {
 export default function BackButton({ className = '' }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  if (pathname === '/') return null;
+  // Top-level pages: the landing page (visitors) and the Dashboard (signed in).
+  if (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/') return null;
   const goBack = () => {
     if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
     else navigate(parentOf(pathname));

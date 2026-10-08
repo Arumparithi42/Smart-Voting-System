@@ -2,12 +2,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { SignOutButton } from "@clerk/clerk-react";
 import { useState, useEffect, useCallback } from 'react';
 import {
-   Bell, ClipboardList, FileCheck2, FilePlus2, Gauge, HelpCircle, Home, LayoutDashboard, LogOut,
+   Bell, ClipboardList, FileCheck2, FilePlus2, Gauge, HelpCircle, LayoutDashboard, LogOut,
    MessageSquareWarning, MailWarning, MessageSquareHeart, PanelLeftClose, PanelLeftOpen, ShieldCheck, UserCircle2, UserPlus, Users, Vote, X, BarChart3, IdCard,
 } from 'lucide-react';
 
-// Home / Elections / Dashboard are always the first three entries for every
-// role (rendered below), then the role's own sections. UX only - every
+// Elections / Dashboard are always the first entries for every role
+// (rendered below), then the role's own sections. Signed-in users have no
+// public landing page - the Dashboard is their home. UX only - every
 // permission is enforced by the backend.
 const NAV = {
    user: [
@@ -53,7 +54,6 @@ const NAV = {
 const isActive = (pathname, to) => (to === '/dashboard' ? pathname === '/dashboard' : pathname === to || pathname.startsWith(`${to}/`));
 
 const TOP_LINKS = [
-   { to: '/', label: 'Home', icon: Home, exact: true },
    { to: '/elections', label: 'Elections', icon: Vote, exact: true },
    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 ];
@@ -133,7 +133,7 @@ const SideBox = ({ isAdmin, role, open = false, onClose = () => {}, collapsed = 
          )}
 
          <div className={`flex items-center justify-between px-4 py-5 ${collapsed ? 'lg:flex-col lg:gap-3 lg:px-2' : ''}`}>
-            <Link to="/" className="flex items-center gap-2 text-xl font-extrabold text-[#1E3A8A]" title="eVote home">
+            <Link to="/dashboard" className="flex items-center gap-2 text-xl font-extrabold text-[#1E3A8A]" title="eVote dashboard">
                <Vote className="h-7 w-7 shrink-0" aria-hidden="true" /> <span className={hideWhenCollapsed}>eVote</span>
             </Link>
             <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200 lg:hidden" aria-label="Close menu">
