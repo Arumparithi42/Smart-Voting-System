@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
-import { CheckCircle2, ClipboardList, PlusCircle } from "lucide-react";
+import { CheckCircle2, ClipboardList, Download, PlusCircle } from "lucide-react";
+import { downloadReceiptPdf } from "../utils/downloadReceipt";
 import axiosInstance from "../utils/axiosInstance";
 import PageHeader from "../components/ui/PageHeader";
 import ElectionStatusBadge from "../components/ui/ElectionStatusBadge";
@@ -58,6 +59,20 @@ const ElectionList = ({ isAdmin }) => {
       load();
     } catch (err) {
       toast.error(err?.response?.data?.message || "Action failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // "Show this election on the home page" Yes/No (admin only, server-enforced).
+  const toggleHomePage = async (election, value) => {
+    setBusyId(election._id);
+    try {
+      const res = await axiosInstance.put(`/api/admin/elections/${election._id}/home-visibility`, { showOnHomePage: value });
+      toast.success(res.data.message);
+      setElections((list) => list.map((x) => (x._id === election._id ? { ...x, showOnHomePage: value } : x)));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Could not update home page visibility");
     } finally {
       setBusyId(null);
     }
@@ -128,6 +143,18 @@ const ElectionList = ({ isAdmin }) => {
                   {election.description && <p className="mt-1 line-clamp-2 text-sm text-slate-600">{election.description}</p>}
                   <p className="mt-2 text-xs text-slate-500">{formatDateTime(election.startTime)} – {formatDateTime(election.endTime)}</p>
                   {isAdmin && <p className="text-xs text-slate-500">{election.candidates?.length || 0} candidate(s)</p>}
+                  {isAdmin && ["DRAFT", "UPCOMING", "ONGOING"].includes(stage) && (
+                    <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-[#1E3A8A]"
+                        checked={!!election.showOnHomePage}
+                        disabled={busyId === election._id}
+                        onChange={(e) => toggleHomePage(election, e.target.checked)}
+                      />
+                      Show on home page
+                    </label>
+                  )}
                   {!isAdmin && election.votedAt && (
                     <p className="mt-2 inline-flex items-center gap-1 text-sm text-green-700"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Voted {formatDateTime(election.votedAt)}</p>
                   )}
@@ -166,6 +193,14 @@ const ElectionList = ({ isAdmin }) => {
                     )}
                     {!isAdmin && stage === "RESULTS_PUBLISHED" && (
                       <Link to={`/result/${election._id}`} className={`${btn} bg-[#1E3A8A] text-white hover:bg-blue-800`}>View Results</Link>
+                    )}
+                    {!isAdmin && (
+                      <button
+                        onClick={() => downloadReceiptPdf(election._id, election.title).catch(() => toast.error("Could not download the receipt."))}
+                        className={`${btn} inline-flex items-center gap-1.5 text-green-700 ring-1 ring-green-300 hover:bg-green-50`}
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" /> Receipt PDF
+                      </button>
                     )}
                     {!isAdmin && stage !== "RESULTS_PUBLISHED" && (
                       <Link to={`/vote/${election._id}`} className={`${btn} text-[#1E3A8A] ring-1 ring-slate-300 hover:bg-slate-50`}>View Receipt</Link>

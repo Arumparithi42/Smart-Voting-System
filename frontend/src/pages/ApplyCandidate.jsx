@@ -3,6 +3,7 @@ import { useUser } from '@clerk/clerk-react';
 import axiosInstance from '../utils/axiosInstance';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
+import Req, { RequiredNote } from '../components/ui/Req';
 
 const ApplyCandidate = () => {
   const { user } = useUser();
@@ -98,10 +99,11 @@ const ApplyCandidate = () => {
         )}
 
         <form onSubmit={submitApplication} className="bg-white p-6 shadow rounded-md space-y-6">
+          <RequiredNote />
           <h2 className="text-2xl font-bold text-[#1E3A8A] mb-4">Apply for a New Election</h2>
           
           <div>
-            <label className="block text-sm font-medium">Select Upcoming Election</label>
+            <label className="block text-sm font-medium">Select Upcoming Election<Req /></label>
             <select name="electionId" value={formData.electionId} onChange={handleChange} className="w-full border p-2 rounded mt-1" required>
               <option value="">-- Choose Election --</option>
               {elections.map(e => <option key={e._id} value={e._id}>{e.title}</option>)}
@@ -110,11 +112,11 @@ const ApplyCandidate = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium">Full Name</label>
+              <label className="block text-sm font-medium">Full Name<Req /></label>
               <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
             </div>
             <div>
-              <label className="block text-sm font-medium">Email</label>
+              <label className="block text-sm font-medium">Email<Req /></label>
               <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
             </div>
             <div>
@@ -135,7 +137,7 @@ const ApplyCandidate = () => {
           <h3 className="text-xl font-semibold text-[#1E3A8A] mt-6">Political Profile</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-               <label className="block text-sm font-medium">Party Name</label>
+               <label className="block text-sm font-medium">Party Name<Req /></label>
                <input type="text" name="partyName" value={formData.partyName} onChange={handleChange} className="w-full border p-2 rounded mt-1" required />
             </div>
             <div>
@@ -158,7 +160,7 @@ const ApplyCandidate = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Manifesto</label>
+            <label className="block text-sm font-medium">Manifesto<Req /></label>
             <textarea name="manifesto" value={formData.manifesto} onChange={handleChange} className="w-full border p-2 rounded mt-1" rows="4" required />
           </div>
 

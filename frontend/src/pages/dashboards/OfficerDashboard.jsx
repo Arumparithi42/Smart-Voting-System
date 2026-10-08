@@ -115,7 +115,14 @@ export default function OfficerDashboard() {
                       <ElectionRow
                         key={e._id}
                         election={e}
-                        action={<Link to={`/dashboard/officer/elections/${e._id}`} className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-[#1E3A8A] ring-1 ring-slate-300 hover:bg-slate-50">Analytics &amp; details</Link>}
+                        action={(
+                          <div className="flex shrink-0 gap-2">
+                            {e.lifecycleStage === 'ONGOING' && (
+                              <Link to={`/dashboard/officer/live-results/${e._id}`} className="rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700">Live Results</Link>
+                            )}
+                            <Link to={`/dashboard/officer/elections/${e._id}`} className="rounded-lg px-3 py-2 text-sm font-semibold text-[#1E3A8A] ring-1 ring-slate-300 hover:bg-slate-50">Analytics &amp; details</Link>
+                          </div>
+                        )}
                       />
                     ))}
                   </ul>

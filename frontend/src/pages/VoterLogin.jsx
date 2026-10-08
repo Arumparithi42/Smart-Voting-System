@@ -3,6 +3,7 @@ import { useSignIn, useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Loader2, Lock } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
+import Req, { RequiredNote } from '../components/ui/Req';
 
 // Voter-only login flow, separate from the admin/general Clerk <SignIn/>
 // at /sign-in (which is untouched). Order, exactly as the college-registry
@@ -298,34 +299,38 @@ export default function VoterLogin() {
 
         {step === 'credentials' && (
           <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+            <RequiredNote />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Voter ID / Register Number</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Voter ID / Register Number<Req /></label>
               <input
                 type="text"
                 value={voterId}
                 onChange={(e) => setVoterId(e.target.value)}
                 placeholder="MIT23CS001"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email<Req /></label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="student@example.com"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password<Req /></label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="********"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
               />
             </div>
             <button
@@ -377,11 +382,12 @@ export default function VoterLogin() {
 
         {step === 'reset-verify' && (
           <form onSubmit={handleResetVerify} className="space-y-4">
+            <RequiredNote />
             <p className="text-sm text-gray-600">
               Enter the code we emailed you and choose a new password.
             </p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Verification Code</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Verification Code<Req /></label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -389,26 +395,29 @@ export default function VoterLogin() {
                 onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="123456"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New Password<Req /></label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 8 characters"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password<Req /></label>
               <input
                 type="password"
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
                 placeholder="Re-enter new password"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
               />
             </div>
             {needsSecondFactor && (
@@ -449,6 +458,10 @@ export default function VoterLogin() {
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
               placeholder="______"
+              aria-label="6-digit verification code (required)"
+              required
+              pattern="\d{6}"
+              title="Enter the 6-digit code"
               className="w-full text-center text-2xl tracking-[0.5em] font-mono border border-gray-300 rounded-md px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
             <button

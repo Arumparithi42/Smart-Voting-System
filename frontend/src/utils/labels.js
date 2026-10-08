@@ -43,3 +43,21 @@ export const toDateTimeLocal = (value) => {
 };
 
 export const formatDateTime = (value) => (value ? new Date(value).toLocaleString() : '—');
+
+export const FEEDBACK_CATEGORIES = [
+  { value: 'GENERAL', label: 'General feedback' },
+  { value: 'SUGGESTION', label: 'Suggestion' },
+  { value: 'BUG_REPORT', label: 'Bug report' },
+  { value: 'USABILITY', label: 'Ease of use / design' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+export const feedbackCategoryLabel = (value) =>
+  FEEDBACK_CATEGORIES.find((c) => c.value === value)?.label || value;
+
+export const FEEDBACK_STATUS_STYLES = {
+  SUBMITTED: 'bg-blue-100 text-blue-800',
+  UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
+  ACKNOWLEDGED: 'bg-green-100 text-green-800',
+  CLOSED: 'bg-slate-200 text-slate-700',
+};

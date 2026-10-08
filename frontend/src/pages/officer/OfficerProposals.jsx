@@ -5,6 +5,7 @@ import { PROPOSAL_STATUS_STYLES, toDateTimeLocal, formatDateTime } from '../../u
 import StatusBadge from '../../components/StatusBadge';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import PageHeader from '../../components/ui/PageHeader';
+import Req, { RequiredNote } from '../../components/ui/Req';
 
 const emptyForm = {
   title: '',
@@ -102,13 +103,14 @@ export default function OfficerProposals() {
           </>} />
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4 mb-10">
+          <RequiredNote />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="block text-sm font-medium text-gray-700 md:col-span-2">
-              Election Name
+              Election Name<Req />
               <input className={input} value={form.title} onChange={setField('title')} required maxLength={200} />
             </label>
             <label className="block text-sm font-medium text-gray-700 md:col-span-2">
-              Description
+              Description<Req />
               <textarea className={input} rows={3} value={form.description} onChange={setField('description')} required />
             </label>
             <label className="block text-sm font-medium text-gray-700">
@@ -120,11 +122,11 @@ export default function OfficerProposals() {
               <input className={input} value={form.category} onChange={setField('category')} placeholder="e.g. Student Council" />
             </label>
             <label className="block text-sm font-medium text-gray-700">
-              Proposed Start
+              Proposed Start<Req />
               <input type="datetime-local" className={input} value={form.proposedStartTime} onChange={setField('proposedStartTime')} required />
             </label>
             <label className="block text-sm font-medium text-gray-700">
-              Proposed End
+              Proposed End<Req />
               <input type="datetime-local" className={input} value={form.proposedEndTime} onChange={setField('proposedEndTime')} required />
             </label>
           </div>

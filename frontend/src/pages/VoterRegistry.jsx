@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Database, CheckCircle, Loader2 } from 'lucide-react';
 import axiosInstance from '../utils/axiosInstance';
+import Req, { RequiredNote } from '../components/ui/Req';
 
 // Simulates the college's own, separately-maintained voter database - NOT
 // the main voting system's login. In a real deployment this data would
@@ -61,38 +62,42 @@ export default function VoterRegistry() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <RequiredNote />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Voter ID / Register Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Voter ID / Register Number<Req /></label>
             <input
               type="text"
               value={voterId}
               onChange={(e) => setVoterId(e.target.value)}
               placeholder="MIT23CS001"
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email<Req /></label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="student@example.com"
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number<Req /></label>
             <input
               type="tel"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="+91XXXXXXXXXX"
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Aadhaar Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Aadhaar Number<Req /></label>
             <input
               type="text"
               inputMode="numeric"
@@ -101,6 +106,7 @@ export default function VoterRegistry() {
               onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ''))}
               placeholder="12-digit number"
               className="w-full border border-gray-300 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-blue-200"
+              required
             />
             <p className="text-xs text-gray-400 mt-1">
               Stored only as a one-way hash - never saved, shown, or logged as plain text.

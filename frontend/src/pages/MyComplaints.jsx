@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import PageHeader from '../components/ui/PageHeader';
 import { AttachmentList, AttachmentPicker } from '../components/complaints/Attachments';
+import Req, { RequiredNote } from '../components/ui/Req';
 
 const emptyForm = { electionId: '', category: '', subject: '', description: '', supportingInfo: '' };
 
@@ -73,6 +74,7 @@ export default function MyComplaints() {
         )}
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4 mb-10">
+          <RequiredNote />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="block text-sm font-medium text-gray-700">
               Election
@@ -82,7 +84,7 @@ export default function MyComplaints() {
               </select>
             </label>
             <label className="block text-sm font-medium text-gray-700">
-              Category
+              Category<Req />
               <select className={input} value={form.category} onChange={setField('category')} required>
                 <option value="" disabled>Choose a category</option>
                 {COMPLAINT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -90,11 +92,11 @@ export default function MyComplaints() {
             </label>
           </div>
           <label className="block text-sm font-medium text-gray-700">
-            Subject
+            Subject<Req />
             <input className={input} value={form.subject} onChange={setField('subject')} required maxLength={200} />
           </label>
           <label className="block text-sm font-medium text-gray-700">
-            Description
+            Description<Req />
             <textarea className={input} rows={4} value={form.description} onChange={setField('description')} required maxLength={5000} />
           </label>
           <label className="block text-sm font-medium text-gray-700">

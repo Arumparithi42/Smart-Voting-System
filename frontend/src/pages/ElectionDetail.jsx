@@ -1,190 +1,134 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { PlusCircle, Trash2, ChevronRight } from "lucide-react";
+import { toast } from "react-toastify";
+import { Lock, PlusCircle, Trash2, UserRound } from "lucide-react";
 import axiosInstance from "../utils/axiosInstance";
+import PageHeader from "../components/ui/PageHeader";
+import ElectionStatusBadge from "../components/ui/ElectionStatusBadge";
+import Req, { RequiredNote } from "../components/ui/Req";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { ErrorState, LoadingState } from "../components/ui/States";
+import CandidateDocuments from "../components/documents/CandidateDocuments";
+import ManifestManager from "../components/documents/ManifestManager";
+import { formatDateTime } from "../utils/electionStages";
 
+const emptyCandidate = { name: "", partyName: "", about: "" };
+
+// Admin: manage an election's candidates (before voting starts), their
+// documents/manifestos, and the election manifest.
 export default function ElectionDetail() {
-  const [candidates, setCandidates] = useState(null);
-  const [election, setElection] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [newCandidate, setNewCandidate] = useState({
-    name: "",
-    party: "",
-    description: ""
-  });
   const { id } = useParams();
-  const [refresh, setRefresh] = useState(false);
-  const [electionId, setElectionId] = useState('');
-  const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
+  const [election, setElection] = useState(null);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState(emptyCandidate);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    const fetchElection = async () => {
-      try {
-        setLoading(true);
-        const response = await axiosInstance.get(`api/elections/${id}`);
-        setElection(response.data);
-        setCandidates(response.data.candidates);
-        setElectionId(response.data._id);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchElection();
-  }, [id, refresh]);
-
-  const handleAddCandidate = () => {
-    setShowModal(true);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewCandidate({ ...newCandidate, [name]: value });
-  };
-
-  const handleSaveCandidate = async () => {
+  const load = useCallback(async () => {
     try {
-      const candidateToSave = {
-        name: newCandidate.name,
-        partyName: newCandidate.party,
-        description: newCandidate.description
-      };
+      const res = await axiosInstance.get(`/api/elections/${id}`);
+      setElection(res.data);
+      setError("");
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to load election details.");
+    }
+  }, [id]);
+  useEffect(() => { load(); }, [load]);
 
-      await axiosInstance.post(
-        `api/admin/elections/${electionId}/candidates`,
-        candidateToSave
-      );
-      
-      setNewCandidate({
-        name: "",
-        party: "",
-        description: ""
-      });
-      setShowModal(false);
-      setRefresh(!refresh);
-    } catch (e) {
-      console.log(e);
+  const addCandidate = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await axiosInstance.post(`/api/admin/elections/${id}/candidates`, form);
+      toast.success("Candidate added.");
+      setForm(emptyCandidate);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not add candidate");
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleDeleteCandidate = async (candidateId) => {
+  const removeCandidate = async (c) => {
+    if (!(await confirm({ title: "Remove candidate?", message: `Remove ${c.name} from this election?`, confirmLabel: "Remove", tone: "danger" }))) return;
     try {
-      await axiosInstance.delete(
-        `api/admin/elections/${electionId}/candidates/${candidateId}`
-      );
-      setRefresh(!refresh);
-    } catch (e) {
-      console.log(e);
+      await axiosInstance.delete(`/api/admin/elections/${id}/candidates/${c._id}`);
+      toast.success("Candidate removed.");
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not remove candidate");
     }
   };
 
+  if (error) return <div className="p-4 sm:p-8"><ErrorState message={error} onRetry={load} /></div>;
+  if (!election) return <LoadingState label="Loading election…" />;
+
+  const locked = !["draft", "upcoming"].includes(election.effectiveStatus);
+  const input = "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200";
 
   return (
-    <div className="min-h-screen bg-slate-50 text-gray-800">
-      <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-[#1e3a8a] mb-4 text-center">{election?.title}</h1>
-        <p className="text-lg text-gray-600 mb-8 text-center max-w-2xl mx-auto">
-          {election?.description}
-        </p>
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <PageHeader title={election.title} subtitle={`${formatDateTime(election.startTime)} – ${formatDateTime(election.endTime)}`} actions={<ElectionStatusBadge stage={election.lifecycleStage} />} />
 
-        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-2xl font-semibold mb-4">Candidates</h2>
+        <ManifestManager apiBase="/api/admin" electionId={election._id} manifest={election.manifest} onChange={load} />
 
-          <button
-            onClick={handleAddCandidate}
-            className="flex items-center mb-6 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            <PlusCircle className="mr-2" /> Add Candidate
-          </button>
-
-          {candidates?.length === 0 ? (
-            <p className="text-center text-gray-500">No candidates present</p>
-          ) : (
-            candidates?.map((candidate, index) => (
-              <div
-                key={index}
-                className="flex items-center p-4 rounded-lg mb-4 bg-gray-50 hover:bg-gray-100 border border-gray-200"
-              >
-                <img
-                  src={candidate.profilePhotoUrl || 'https://t4.ftcdn.net/jpg/00/99/13/41/240_F_99134157_dFAWZmsNpZ0ghgnU3g1W5I9XcJEnDQGg.jpg'}
-                  alt={candidate.name}
-                  className="w-20 h-20 rounded-full object-cover mr-4"
-                />
-
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium">{candidate.name} {candidate.qualification ? `(${candidate.qualification})` : ''}</h3>
-                  <p className="text-gray-600">{candidate.description || candidate.about}</p>
-
-                  <div className="flex items-center mt-2">
-                    <img
-                      src={candidate.partySymbolUrl || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_hwE2DtYle0M11E0IgPGW1D9_XME9YDuLzA&s'}
-                      alt={`${candidate.partyName} symbol`}
-                      className="w-8 h-8 mr-2"
-                    />
-                    <span className="text-blue-600 font-medium">{candidate.partyName}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDeleteCandidate(candidate._id)}
-                  className="text-red-500 hover:text-red-700 ml-4"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
-              <h3 className="text-2xl font-semibold mb-4">Add New Candidate</h3>
-
-              <input
-                type="text"
-                name="name"
-                value={newCandidate.name}
-                onChange={handleInputChange}
-                placeholder="Candidate Name"
-                className="w-full p-2 mb-4 border border-gray-300 rounded"
-              />
-              <input
-                type="text"
-                name="party"
-                value={newCandidate.party}
-                onChange={handleInputChange}
-                placeholder="Party"
-                className="w-full p-2 mb-4 border border-gray-300 rounded"
-              />
-              <input
-                type="text"
-                name="description"
-                value={newCandidate.description}
-                onChange={handleInputChange}
-                placeholder="Candidate Description"
-                className="w-full p-2 mb-4 border border-gray-300 rounded"
-              />
-
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 mr-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveCandidate}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Save Candidate
-                </button>
-              </div>
-            </div>
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900">Candidates ({election.candidates?.length || 0})</h2>
+            {locked && <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500"><Lock className="h-3.5 w-3.5" aria-hidden="true" /> Locked - voting has started</span>}
           </div>
-        )}
 
-      </main>
+          {!election.candidates?.length ? <p className="text-sm text-slate-500">No candidates yet.</p> : (
+            <ul className="space-y-4">
+              {election.candidates.map((c) => (
+                <li key={c._id} className="rounded-xl p-4 ring-1 ring-slate-200">
+                  <div className="flex items-start gap-3">
+                    {c.profilePhotoUrl
+                      ? <img src={c.profilePhotoUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                      : <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400"><UserRound className="h-6 w-6" aria-hidden="true" /></span>}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900">{c.name} {c.qualification && <span className="font-normal text-slate-500">({c.qualification})</span>}</p>
+                      <p className="text-sm text-slate-500">{c.partyName || "Independent"}</p>
+                      {c.about && <p className="mt-1 text-sm text-slate-600">{c.about}</p>}
+                    </div>
+                    {!locked && (
+                      <button onClick={() => removeCandidate(c)} className="rounded-md p-2 text-red-600 hover:bg-red-50" aria-label={`Remove ${c.name}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <CandidateDocuments apiBase="/api/admin" electionId={election._id} candidate={c} onChange={load} />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {!locked && (
+            <form onSubmit={addCandidate} className="mt-6 space-y-3 border-t pt-4">
+              <h3 className="font-semibold text-slate-900">Add candidate</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-slate-700">Name<Req />
+                  <input className={input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={200} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">Party
+                  <input className={input} value={form.partyName} onChange={(e) => setForm({ ...form, partyName: e.target.value })} maxLength={200} />
+                </label>
+              </div>
+              <label className="block text-sm font-medium text-slate-700">About
+                <textarea className={input} rows={2} value={form.about} onChange={(e) => setForm({ ...form, about: e.target.value })} maxLength={2000} />
+              </label>
+              <div className="flex items-center justify-between gap-3">
+                <RequiredNote />
+                <button disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-slate-400">
+                  <PlusCircle className="h-4 w-4" aria-hidden="true" /> Add Candidate
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

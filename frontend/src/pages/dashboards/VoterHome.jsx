@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { Bell, Bot, CalendarClock, MessageSquareWarning, ShieldAlert, ShieldCheck, UserCircle2, Vote } from 'lucide-react';
+import { Bell, Bot, MessageSquareHeart, CalendarClock, MessageSquareWarning, ShieldAlert, ShieldCheck, UserCircle2, Vote } from 'lucide-react';
 import axiosInstance from '../../utils/axiosInstance';
 import ElectionCard from '../../components/ElectionCard';
 import NotificationItem from '../../components/notifications/NotificationItem';
@@ -57,6 +57,7 @@ export default function VoterHome() {
     { label: 'Notifications', to: '/dashboard/notifications', icon: Bell },
     { label: 'Profile', to: '/dashboard/profile', icon: UserCircle2 },
     { label: 'My Complaints', to: '/dashboard/complaints', icon: MessageSquareWarning },
+    { label: 'Feedback', to: '/dashboard/feedback', icon: MessageSquareHeart },
   ];
 
   return (

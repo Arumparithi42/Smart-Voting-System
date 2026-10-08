@@ -51,7 +51,12 @@ export const sendStoredFile = (res, file, { cacheSeconds = 0, privateCache = tru
   res.setHeader('Content-Type', file.contentType);
   res.setHeader('Content-Length', file.size);
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+  // Images get a locked-down CSP. PDFs don't: Chrome's built-in PDF viewer
+  // refuses to open under a sandbox CSP; the exact application/pdf type plus
+  // nosniff already stops a PDF from being treated as a web page.
+  if (file.contentType !== 'application/pdf') {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+  }
   res.setHeader('Content-Disposition', `inline; filename="${file.filename}"`);
   res.setHeader('Cache-Control', `${privateCache ? 'private' : 'public'}, max-age=${cacheSeconds}`);
   res.end(file.data);

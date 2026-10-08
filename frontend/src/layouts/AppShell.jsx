@@ -22,6 +22,14 @@ export default function AppShell() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { role } = useUserRole();
   const [menuOpen, setMenuOpen] = useState(false);
+  // Desktop sidebar collapsed to an icon rail (remembered per browser).
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebarCollapsed') === '1'; } catch { return false; }
+  });
+  const toggleCollapsed = () => setCollapsed((c) => {
+    try { localStorage.setItem('sidebarCollapsed', c ? '0' : '1'); } catch { /* storage unavailable */ }
+    return !c;
+  });
   const [profile, setProfile] = useState(null);
 
   // Ensure the signed-in Clerk user has a User record (role always 'user'
@@ -67,12 +75,19 @@ export default function AppShell() {
 
   return (
     <div className="app-ui min-h-screen bg-slate-50">
-      <SideBox isAdmin={role === 'admin'} role={role} open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <SideBox
+        isAdmin={role === 'admin'}
+        role={role}
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapsed={toggleCollapsed}
+      />
       <div className="lg:ml-64">
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
           <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-6">
             <div className="flex items-center gap-1">
-              <button onClick={() => setMenuOpen(true)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Open menu">
+              <button onClick={() => setMenuOpen(true)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Open menu" aria-expanded={menuOpen}>
                 <Menu className="h-6 w-6" />
               </button>
               <BackButton />

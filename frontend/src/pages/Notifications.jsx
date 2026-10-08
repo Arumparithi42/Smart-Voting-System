@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BellOff, CheckCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -9,6 +10,8 @@ import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
 export default function Notifications() {
   const { notifications, unreadCount, loading, error, refresh, markRead, markAllRead } = useNotifications({ limit: 100 });
   const navigate = useNavigate();
+  const [view, setView] = useState('all');
+  const shown = view === 'unread' ? notifications.filter((n) => !n.isRead) : notifications;
 
   const open = async (n) => {
     if (!n.isRead) await markRead(n._id).catch(() => toast.error('Could not update notification'));
@@ -40,12 +43,30 @@ export default function Notifications() {
           <LoadingState label="Loading notifications…" />
         ) : error ? (
           <ErrorState message={error} onRetry={refresh} />
-        ) : notifications.length === 0 ? (
-          <EmptyState icon={BellOff} title="No notifications." message="Election reminders, results and complaint updates will appear here." />
         ) : (
-          <div className="divide-y overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-            {notifications.map((n) => <NotificationItem key={n._id} notification={n} onOpen={open} />)}
-          </div>
+          <>
+            <div className="mb-4 flex gap-2" role="tablist" aria-label="Filter notifications">
+              {[['all', 'All', notifications.length], ['unread', 'Unread', unreadCount]].map(([key, label, count]) => (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={view === key}
+                  onClick={() => setView(key)}
+                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${view === key ? 'bg-[#1E3A8A] text-white' : 'bg-white text-slate-700 ring-1 ring-slate-300'}`}
+                >
+                  {label}
+                  <span className={`rounded-full px-1.5 text-xs ${view === key ? 'bg-white/20' : key === 'unread' && count ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{count}</span>
+                </button>
+              ))}
+            </div>
+            {shown.length === 0 ? (
+              <EmptyState icon={BellOff} title={view === 'unread' ? 'No unread notifications.' : 'No notifications.'} message="Election reminders, results, requests and updates will appear here." />
+            ) : (
+              <div className="divide-y overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+                {shown.map((n) => <NotificationItem key={n._id} notification={n} onOpen={open} />)}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

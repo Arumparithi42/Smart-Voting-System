@@ -28,7 +28,7 @@ export default function OfficerElections() {
   return (
     <div className="bg-slate-50 min-h-screen p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
-        <PageHeader title={<>Monitor Elections</>} subtitle={<>Status and turnout of official elections. Results can be reviewed once voting closes.</>} />
+        <PageHeader title={<>Monitor Elections</>} subtitle={<>Status, turnout and live results of official elections. Final results can be reviewed once voting closes.</>} />
 
         {loading ? (
           <p className="py-10 text-center text-slate-500">Loading…</p>
@@ -56,6 +56,14 @@ export default function OfficerElections() {
                     <p className="text-blue-700">Publication recommended - awaiting Admin.</p>
                   )}
                 </div>
+                {e.lifecycleStage === 'ONGOING' && (
+                  <Link
+                    to={`/dashboard/officer/live-results/${e._id}`}
+                    className="inline-block mt-4 mr-2 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 text-sm"
+                  >
+                    Live Results
+                  </Link>
+                )}
                 {e.effectiveStatus === 'completed' && (
                   <Link
                     to={`/dashboard/officer/results/${e._id}`}

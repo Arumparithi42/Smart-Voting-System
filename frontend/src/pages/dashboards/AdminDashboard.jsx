@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Archive, CalendarClock, FileCheck2, FilePlus2, IdCard, MailWarning, MessageSquareWarning, PlusCircle, Trophy, Users, Vote } from 'lucide-react';
+import { Archive, MessageSquareHeart, CalendarClock, FileCheck2, FilePlus2, IdCard, MailWarning, MessageSquareWarning, PlusCircle, Trophy, Users, Vote } from 'lucide-react';
 import axiosInstance from '../../utils/axiosInstance';
 import PageHeader from '../../components/ui/PageHeader';
 import StatCard from '../../components/ui/StatCard';
@@ -40,6 +40,7 @@ export default function AdminDashboard() {
                 View published results ({s.elections.RESULTS_PUBLISHED ?? 0})
               </Link>
             </div>
+            <StatCard loading={loading} label="New Feedback" value={s.newFeedback} icon={MessageSquareHeart} to="/dashboard/admin/feedback" hint="Submitted or under review" />
             <StatCard loading={loading} label="Open Complaints" value={s.openComplaints} icon={MessageSquareWarning} to="/dashboard/admin/complaints" hint="Open or under review" />
             <StatCard loading={loading} label="Failed Result Emails" value={s.failedResultEmails} icon={MailWarning} to="/dashboard/admin/result-emails" hint="Review and retry deliveries" />
             {s.elections.DRAFT > 0 && (

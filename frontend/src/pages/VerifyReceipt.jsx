@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { ShieldCheck, ShieldX, Loader2 } from 'lucide-react';
+import Req, { RequiredNote } from '../components/ui/Req';
 
 export default function VerifyReceipt() {
   const [elections, setElections] = useState([]);
@@ -57,13 +58,13 @@ export default function VerifyReceipt() {
           </p>
 
           <form onSubmit={handleVerify} className="space-y-4">
+            <RequiredNote />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Election</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Election<Req /></label>
               <select
                 value={electionId}
                 onChange={(e) => setElectionId(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              >
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200" required>
                 <option value="">Select an election</option>
                 {elections.map((election) => (
                   <option key={election._id} value={election._id}>
@@ -74,13 +75,14 @@ export default function VerifyReceipt() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Receipt ID</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Receipt ID<Req /></label>
               <input
                 type="text"
                 value={receiptId}
                 onChange={(e) => setReceiptId(e.target.value)}
                 placeholder="VOTE-XXXXXXXX-XXXXXXXX-XXXXXXXX"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
               />
             </div>
 

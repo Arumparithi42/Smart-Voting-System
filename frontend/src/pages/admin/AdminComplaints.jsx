@@ -149,7 +149,7 @@ export default function AdminComplaints() {
                 ) : (
                   <div className="bg-white p-4 rounded shadow-sm space-y-3">
                     <label className="block text-sm font-semibold">
-                      Response to voter
+                      Response to voter <span className="font-normal text-slate-500">(<span className="text-red-600">*</span> required to resolve or reject)</span>
                       <textarea className="mt-1 w-full border rounded p-2" rows={3} value={response} onChange={(e) => setResponse(e.target.value)} />
                     </label>
                     <div className="flex flex-wrap gap-2">

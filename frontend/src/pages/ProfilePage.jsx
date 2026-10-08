@@ -9,6 +9,7 @@ const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 import axiosInstance from '../utils/axiosInstance';
 import PageHeader from '../components/ui/PageHeader';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import Req, { RequiredNote } from '../components/ui/Req';
 
 const ROLE_LABEL = { admin: 'Admin', officer: 'Election Officer', user: 'Voter' };
 
@@ -110,6 +111,7 @@ export default function ProfilePage() {
         <PageHeader title="My Profile" subtitle="Update how you appear in the Smart Voting System." />
         <div className="grid gap-6 lg:grid-cols-5">
           <form onSubmit={save} className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 lg:col-span-3">
+            <RequiredNote />
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="relative h-24 w-24 shrink-0">
                 {photoSrc
@@ -143,7 +145,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-medium text-slate-700">First name
+              <label className="block text-sm font-medium text-slate-700">First name<Req />
                 <input className={input} value={form.firstName} maxLength={50} required onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
               </label>
               <label className="block text-sm font-medium text-slate-700">Last name

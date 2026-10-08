@@ -23,9 +23,9 @@ A secure and easy-to-use online voting platform where users can cast votes, trac
 
 | Role | Can | Cannot |
 |------|-----|--------|
-| **Voter / User** | View elections, vote (after voter registry + OTP verification), view **published** results, receive the result email if they voted, raise complaints and track their own complaints | Create/approve elections, publish results, change vote counts, see other users' complaints, access officer/admin dashboards |
-| **Election Officer** | Propose elections to the Admin, revise proposals the Admin sends back, monitor approved elections (status + turnout), review final aggregate results after voting closes, recommend publication | Create official elections or bypass Admin approval, publish results, see live per-candidate tallies, modify votes, access voter registry data (Aadhaar), receive voter complaints |
-| **Admin** | Everything above plus: approve / reject / request revision of proposals, create & schedule elections, publish official results, retry failed result emails, handle complaints, appoint Election Officers | — (final authority) |
+| **Voter / User** | View elections, vote (after voter registry + OTP verification), view **published** results, receive the result email if they voted, raise complaints and track their own complaints, download a vote receipt PDF, send feedback to the Admin | Create/approve elections, publish results, change vote counts, see other users' complaints, access officer/admin dashboards |
+| **Election Officer** | Propose elections to the Admin, revise proposals the Admin sends back, monitor approved elections (status + turnout + live per-candidate totals), upload candidate documents and the election manifest before voting starts, review final aggregate results after voting closes, recommend publication | Create official elections or bypass Admin approval, publish results, modify votes, see who anyone voted for, access voter registry data (Aadhaar), receive voter complaints |
+| **Admin** | Everything above plus: approve / reject / request revision of proposals, create & schedule elections, publish official results, retry failed result emails, handle complaints and feedback, choose which elections appear on the home page, appoint Election Officers | — (final authority) |
 
 All permissions are enforced by the backend from the role stored in MongoDB. The frontend's role display is UX only.
 
@@ -42,7 +42,10 @@ Election Officer ──proposal──▶ Admin reviews ──approve──▶ of
                      Officer reviews final results & recommends ──▶ Admin publishes ──▶ website results
                                                                                      └─▶ result email to voters who voted
 Voter ──complaint──▶ Admin (respond / resolve / reject)
+User / Officer ──feedback──▶ Admin (reply + status) ──▶ notification back to the sender
 ```
+
+* **Notifications** for the workflow: a new or resubmitted proposal notifies every Admin; approve / reject / revision request notifies the officer (with the Admin's feedback); new complaints and feedback notify Admins; feedback replies notify the sender.
 
 * **Results** are calculated from the aggregate candidate counters once voting closes, and only become public after an Admin publishes them.
 * **Result emails** go only to voters in the election's participation record (`Election.voters`), never to eligible non-voters. They contain only aggregate results. Each voter has one `ResultEmailDelivery` row per election (unique index), so re-publishing or retrying never sends duplicates. Failed deliveries are recorded and an Admin can retry them.
@@ -60,6 +63,16 @@ Voter ──complaint──▶ Admin (respond / resolve / reject)
 | **Profile** | Dashboard → Profile | Display name, bio and photo are editable. Voter ID, registered email and masked phone are read-only. Aadhaar, OTPs and passwords are never returned. |
 | **Complaints** | Dashboard → My Complaints / Admin → Complaints | Go directly to the Admin with a reference ID (e.g. `CMP-2026-00124`). Up to 3 screenshots/PDFs (5 MB each) can be attached. Complaints and their files are visible only to the author and Admins. |
 | **Profile photo** | Dashboard → Profile | Upload / change / remove a PNG, JPEG, GIF or WebP photo (2 MB). Shown on the profile and in the top bar. |
+| **Required fields** | Every form | Mandatory fields are marked with a red `*` ("Fields marked * are required"); empty submissions are blocked in the browser and again by the backend. |
+| **Notifications** | Bell icon, Dashboard → Notifications | All / Unread tabs; unread items have a blue bar and a "New" badge. Proposal submitted / revision requested / approved / rejected, complaint and feedback notifications on top of the election reminders. |
+| **Vote receipt PDF** | Vote confirmation screen, Elections list ("Receipt PDF") | `GET /api/elections/:id/my-receipt.pdf`, own vote only. Contains the election, receipt ID and date/time, never the chosen candidate. |
+| **Live results for officers** | Officer → Monitor Elections → Live Results | Candidate names, votes, % and total votes plus turnout; refreshes every 10 s while voting is open. Aggregate counts only, and the public results stay locked until the Admin publishes them. |
+| **Candidate documents** | Admin → Manage Elections → Manage, Officer election page | PDF / images, 5 MB each, up to 10 per candidate. "Manifesto" documents are public on the election page; "Other documents" are visible to Admins and Officers only. File types are checked from the file content. |
+| **Election manifest** | Create Election form, manage page | One PDF / image (10 MB) per election, shown as "View election manifest" on the public election page. |
+| **Create election with candidates** | Admin → Create Election | Add any number of candidates in the same form (votes always start at 0). |
+| **Home page elections** | Home page | "Show this election on the home page?" Yes/No when creating or approving (and a toggle on Manage Elections). The home page then lists Ongoing elections (time remaining) and Upcoming elections (start time + countdown), loaded from `GET /api/home-elections`. |
+| **Feedback** | Dashboard → Feedback / Admin → User Feedback | Type, optional 1–5 rating, subject, message. Reference IDs like `FB-2026-00001`; Admin replies and sets the status (Submitted, Under Review, Acknowledged, Closed), and the user sees it. |
+| **Collapsible sidebar** | Every signed-in page | The button next to the logo collapses the sidebar to an icon rail (remembered per browser); on mobile it is a slide-in drawer. |
 | **Navigation** | Every page | Signed-in users get one layout everywhere (sidebar with Home / Elections / Dashboard + top bar with Back, notifications, profile); visitors get the public header with Back. Election lists have Upcoming / Ongoing / Past / Results Pending / Published tabs. |
 
 ## ⚙️ Configuration
@@ -80,7 +93,7 @@ Chatbot: `CHATBOT_PROVIDER=rules` (default, no external service) or `anthropic` 
 ```bash
 # backend
 cd backend
-npm install
+npm install               # re-run after pulling: new dependencies (pdfkit, multer)
 cp .env.example .env      # then fill in MONGO_URI and the Clerk keys
 npm run dev               # http://localhost:5000
 

@@ -1,4 +1,5 @@
 import Hero from '../components/Hero'
+import HomeElections from '../components/HomeElections'
 
 const Home = () => {
   return (
@@ -58,6 +59,8 @@ const Home = () => {
 
       </section> */}
       <Hero/>
+      {/* Elections the Admin chose to feature on the home page */}
+      <HomeElections />
       {/* Hero Section End  */}
 
       {/* <section>

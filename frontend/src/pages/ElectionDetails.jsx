@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { CalendarDays, CheckCircle2, Info, ShieldCheck, Trophy, UserRound, Vote, X } from 'lucide-react';
+import { CalendarDays, CheckCircle2, FileText, Info, ShieldCheck, Trophy, UserRound, Vote, X } from 'lucide-react';
+import { mediaUrl } from '../utils/media';
 import axiosInstance from '../utils/axiosInstance';
 import ElectionCountdown from '../components/ElectionCountdown';
 import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
@@ -29,6 +30,20 @@ function CandidateModal({ candidate, onClose }) {
         {candidate.occupation && <p className="mt-1 text-sm"><span className="font-semibold">Occupation:</span> {candidate.occupation}</p>}
         {candidate.about && <><h3 className="mt-4 font-semibold">About</h3><p className="whitespace-pre-wrap text-sm text-slate-700">{candidate.about}</p></>}
         {candidate.manifesto && <><h3 className="mt-4 font-semibold">Manifesto</h3><p className="whitespace-pre-wrap text-sm text-slate-700">{candidate.manifesto}</p></>}
+        {candidate.documents?.length > 0 && (
+          <>
+            <h3 className="mt-4 font-semibold">Manifesto documents</h3>
+            <ul className="mt-1 space-y-1">
+              {candidate.documents.map((d) => (
+                <li key={d.fileId}>
+                  <a href={mediaUrl(`/api/candidates/documents/${d.fileId}`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline">
+                    <FileText className="h-4 w-4" aria-hidden="true" /> {d.title || d.filename}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
         {candidate.promises?.length > 0 && (
           <><h3 className="mt-4 font-semibold">Key promises</h3><ul className="list-disc pl-5 text-sm text-slate-700">{candidate.promises.map((p, i) => <li key={i}>{p}</li>)}</ul></>
         )}
@@ -85,6 +100,11 @@ export default function ElectionDetails() {
                 </div>
                 {election.description && <p className="mt-3 text-slate-700">{election.description}</p>}
                 {election.purpose && <p className="mt-2 text-sm text-slate-600"><span className="font-semibold">Purpose:</span> {election.purpose}</p>}
+                {election.manifest?.fileId && (
+                  <a href={mediaUrl(`/api/elections/${election._id}/manifest`)} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-[#1E3A8A] ring-1 ring-blue-200 hover:bg-blue-100">
+                    <FileText className="h-4 w-4" aria-hidden="true" /> View election manifest
+                  </a>
+                )}
                 <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                   <p className="flex items-center gap-2 text-slate-700"><CalendarDays className="h-4 w-4 text-slate-400" aria-hidden="true" /><span><span className="font-semibold">Starts:</span> {formatDateTime(election.startTime)}</span></p>
                   <p className="flex items-center gap-2 text-slate-700"><CalendarDays className="h-4 w-4 text-slate-400" aria-hidden="true" /><span><span className="font-semibold">Ends:</span> {formatDateTime(election.endTime)}</span></p>
@@ -114,15 +134,15 @@ export default function ElectionDetails() {
               <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
                 <h2 className="mb-4 text-lg font-bold text-slate-900">Candidates ({election.candidates?.length || 0})</h2>
                 {!election.candidates?.length ? <p className="text-sm text-slate-500">No candidates have been announced yet.</p> : (
-                  <ul className="grid gap-3 sm:grid-cols-2">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {election.candidates.map((c) => (
-                      <li key={c._id} className="flex items-center gap-3 rounded-xl p-3 ring-1 ring-slate-200">
+                      <li key={c._id} className="flex min-w-0 items-center gap-3 rounded-xl p-3 ring-1 ring-slate-200">
                         {c.profilePhotoUrl
-                          ? <img src={c.profilePhotoUrl} alt="" className="h-14 w-14 rounded-full object-cover" />
-                          : <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400"><UserRound className="h-7 w-7" aria-hidden="true" /></span>}
+                          ? <img src={c.profilePhotoUrl} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                          : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400"><UserRound className="h-7 w-7" aria-hidden="true" /></span>}
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-semibold text-slate-900">{c.name}</p>
-                          <p className="truncate text-sm text-slate-500">{c.partyName || 'Independent'}</p>
+                          <p className="truncate text-sm text-slate-500">{c.partyName || 'Independent'}{c.documents?.length ? ' · manifesto available' : ''}</p>
                         </div>
                         <button onClick={() => setViewing(c)} className="shrink-0 text-sm font-semibold text-blue-700 hover:underline">Details</button>
                       </li>

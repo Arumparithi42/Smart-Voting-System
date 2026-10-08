@@ -8,6 +8,9 @@ import ElectionCountdown from '../../components/ElectionCountdown';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import { formatDateTime } from '../../utils/electionStages';
+import CandidateDocuments from '../../components/documents/CandidateDocuments';
+import ManifestManager from '../../components/documents/ManifestManager';
+import Req from '../../components/ui/Req';
 
 const hourLabel = (iso) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric' });
 
@@ -112,6 +115,8 @@ export default function OfficerElectionDetail() {
           <ElectionCountdown election={election} onStageChange={load} className="mt-4" />
         </section>
 
+        <ManifestManager apiBase="/api/officer" electionId={election._id} manifest={election.manifest} onChange={load} />
+
         <section className="grid gap-4 sm:grid-cols-3">
           {[
             ['Votes cast', analytics.votesCast],
@@ -130,7 +135,11 @@ export default function OfficerElectionDetail() {
           {analytics.timeline.length === 0
             ? <p className="text-sm text-slate-500">No votes have been cast yet.</p>
             : <ParticipationChart timeline={analytics.timeline} />}
-          <p className="mt-3 text-xs text-slate-500">Analytics show participation only. Candidate totals are available after voting closes, from the results review.</p>
+          {election.lifecycleStage === 'ONGOING' && (
+            <Link to={`/dashboard/officer/live-results/${election._id}`} className="mt-4 mr-2 inline-block rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700">
+              View live results
+            </Link>
+          )}
           {analytics.finalResultsAvailable && (
             <Link to={`/dashboard/officer/results/${election._id}`} className="mt-4 inline-block rounded-lg bg-[#1E3A8A] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">
               {election.resultsPublished ? 'View final results' : 'Review final results'}
@@ -148,25 +157,34 @@ export default function OfficerElectionDetail() {
           {election.candidates.length === 0 ? <p className="text-sm text-slate-500">No candidates yet.</p> : (
             <ul className="divide-y">
               {election.candidates.map((c) => (
-                <li key={c._id} className="flex items-center justify-between gap-3 py-3">
-                  <div>
-                    <p className="font-semibold text-slate-900">{c.name}</p>
-                    <p className="text-sm text-slate-500">{c.partyName || 'Independent'}</p>
+                <li key={c._id} className="py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-900">{c.name}</p>
+                      <p className="text-sm text-slate-500">{c.partyName || 'Independent'}</p>
+                    </div>
+                    {!election.candidatesLocked && (
+                      <button onClick={() => removeCandidate(c)} className="rounded-md p-2 text-red-600 hover:bg-red-50" aria-label={`Remove ${c.name}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
-                  {!election.candidatesLocked && (
-                    <button onClick={() => removeCandidate(c)} className="rounded-md p-2 text-red-600 hover:bg-red-50" aria-label={`Remove ${c.name}`}>
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  <CandidateDocuments apiBase="/api/officer" electionId={election._id} candidate={c} onChange={load} />
                 </li>
               ))}
             </ul>
           )}
           {!election.candidatesLocked && (
-            <form onSubmit={addCandidate} className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-[1fr_1fr_2fr_auto]">
-              <input className={input} placeholder="Candidate name" aria-label="Candidate name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <input className={input} placeholder="Party" aria-label="Party" value={form.partyName} onChange={(e) => setForm({ ...form, partyName: e.target.value })} />
-              <input className={input} placeholder="About (optional)" aria-label="About" value={form.about} onChange={(e) => setForm({ ...form, about: e.target.value })} />
+            <form onSubmit={addCandidate} className="mt-4 grid items-end gap-2 border-t pt-4 sm:grid-cols-[1fr_1fr_2fr_auto]">
+              <label className="block text-xs font-medium text-slate-600">Name<Req />
+                <input className={input} placeholder="Candidate name" aria-label="Candidate name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              </label>
+              <label className="block text-xs font-medium text-slate-600">Party
+                <input className={input} placeholder="Party" aria-label="Party" value={form.partyName} onChange={(e) => setForm({ ...form, partyName: e.target.value })} />
+              </label>
+              <label className="block text-xs font-medium text-slate-600">About
+                <input className={input} placeholder="About (optional)" aria-label="About" value={form.about} onChange={(e) => setForm({ ...form, about: e.target.value })} />
+              </label>
               <button disabled={busy} className="inline-flex items-center justify-center gap-1 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-slate-400">
                 <PlusCircle className="h-4 w-4" aria-hidden="true" /> Add
               </button>

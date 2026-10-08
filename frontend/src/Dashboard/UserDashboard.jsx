@@ -18,6 +18,8 @@ import AdminProposals from '../pages/admin/AdminProposals';
 import AdminComplaints from '../pages/admin/AdminComplaints';
 import AdminUsers from '../pages/admin/AdminUsers';
 import FailedResultEmails from '../pages/admin/FailedResultEmails';
+import AdminFeedback from '../pages/admin/AdminFeedback';
+import FeedbackPage from '../pages/FeedbackPage';
 import Error from '../error/Error';
 
 const UserDashboard = () => {
@@ -31,6 +33,7 @@ const UserDashboard = () => {
         <Route path="/elections" element={<ElectionList isAdmin={isAdmin} />} />
         <Route path="/help" element={<HelpSupportPage />} />
         <Route path="/complaints" element={<MyComplaints />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route
@@ -46,6 +49,7 @@ const UserDashboard = () => {
         <Route path="/officer/proposals" element={<RequireRole roles={['officer']}><OfficerProposals /></RequireRole>} />
         <Route path="/officer/elections" element={<RequireRole roles={['officer']}><OfficerElections /></RequireRole>} />
         <Route path="/officer/elections/:electionId" element={<RequireRole roles={['officer']}><OfficerElectionDetail /></RequireRole>} />
+        <Route path="/officer/live-results/:electionId" element={<RequireRole roles={['officer']}><LiveResults mode="officer" /></RequireRole>} />
         <Route path="/officer/results/:electionId" element={<RequireRole roles={['officer']}><ElectionResultsReview mode="officer" /></RequireRole>} />
 
         {/* Admin */}
@@ -53,6 +57,7 @@ const UserDashboard = () => {
         <Route path="/admin/complaints" element={<RequireAdmin><AdminComplaints /></RequireAdmin>} />
         <Route path="/admin/users" element={<RequireAdmin><AdminUsers /></RequireAdmin>} />
         <Route path="/admin/result-emails" element={<RequireAdmin><FailedResultEmails /></RequireAdmin>} />
+        <Route path="/admin/feedback" element={<RequireAdmin><AdminFeedback /></RequireAdmin>} />
         <Route path="/admin/results/:electionId" element={<RequireAdmin><ElectionResultsReview mode="admin" /></RequireAdmin>} />
         <Route path="*" element={<div className="p-8"><Error errMsg="Page not found." /></div>} />
     </Routes>

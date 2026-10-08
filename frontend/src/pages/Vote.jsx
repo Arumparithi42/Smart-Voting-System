@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import ElectionCountdown from '../components/ElectionCountdown';
-import { CheckCircle, ChevronRight, Copy, ShieldCheck, Loader2 } from 'lucide-react';
+import { CheckCircle, ChevronRight, Copy, Download, ShieldCheck, Loader2 } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { downloadReceiptPdf } from '../utils/downloadReceipt';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUser } from "@clerk/clerk-react";
 import ElectionStatusBadge from '../components/ui/ElectionStatusBadge';
@@ -215,6 +217,12 @@ export default function Vote() {
             </p>
 
             <div className="flex flex-col gap-3">
+              <button
+                onClick={() => downloadReceiptPdf(electionId, receipt.electionTitle).catch(() => toast.error('Could not download the receipt.'))}
+                className="w-full py-3 rounded-full font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors inline-flex items-center justify-center gap-2"
+              >
+                <Download className="w-5 h-5" aria-hidden="true" /> Download receipt (PDF)
+              </button>
               {receipt.receiptId && (
                 <Link
                   to="/verify-receipt"

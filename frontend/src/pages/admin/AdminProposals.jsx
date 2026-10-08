@@ -4,6 +4,7 @@ import axiosInstance from '../../utils/axiosInstance';
 import { PROPOSAL_STATUS_STYLES, humanize, toDateTimeLocal, formatDateTime } from '../../utils/labels';
 import StatusBadge from '../../components/StatusBadge';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import Req from '../../components/ui/Req';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import PageHeader from '../../components/ui/PageHeader';
 
@@ -47,6 +48,7 @@ export default function AdminProposals() {
       endTime: toDateTimeLocal(p.proposedEndTime),
       candidates: (p.candidates || []).map((c) => ({ ...c })),
       createAsDraft: false,
+      showOnHomePage: false,
     });
   };
 
@@ -65,6 +67,10 @@ export default function AdminProposals() {
   };
 
   const approve = async () => {
+    // Mandatory fields must be filled before anything is sent.
+    const missing = [['Title', draft.title], ['Start', draft.startTime], ['End', draft.endTime]].filter(([, v]) => !String(v || '').trim()).map(([k]) => k);
+    if (missing.length) return toast.error(`Please fill in the required field(s): ${missing.join(', ')}.`);
+    if (new Date(draft.endTime) <= new Date(draft.startTime)) return toast.error('End must be after Start.');
     if (!(await confirm({
       title: 'Approve & create election?',
       message: `Approving creates the official election "${draft.title}"${draft.createAsDraft ? ' as a draft' : ' and schedules it'}.`,
@@ -77,6 +83,7 @@ export default function AdminProposals() {
       endTime: new Date(draft.endTime).toISOString(),
       candidates: draft.candidates.filter((c) => c.name?.trim()),
       createAsDraft: draft.createAsDraft,
+      showOnHomePage: draft.showOnHomePage,
       adminFeedback: feedback || undefined,
     }));
   };
@@ -162,11 +169,11 @@ export default function AdminProposals() {
                 ) : (
                   <div className="bg-white p-4 rounded shadow-sm space-y-3">
                     <h3 className="font-semibold">Confirm official election details</h3>
-                    <label className="block text-sm">Title<input className={input} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></label>
+                    <label className="block text-sm">Title<Req /><input className={input} required value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></label>
                     <label className="block text-sm">Description<textarea className={input} rows={2} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <label className="block text-sm">Start<input type="datetime-local" className={input} value={draft.startTime} onChange={(e) => setDraft({ ...draft, startTime: e.target.value })} /></label>
-                      <label className="block text-sm">End<input type="datetime-local" className={input} value={draft.endTime} onChange={(e) => setDraft({ ...draft, endTime: e.target.value })} /></label>
+                      <label className="block text-sm">Start<Req /><input type="datetime-local" className={input} required value={draft.startTime} onChange={(e) => setDraft({ ...draft, startTime: e.target.value })} /></label>
+                      <label className="block text-sm">End<Req /><input type="datetime-local" className={input} required value={draft.endTime} onChange={(e) => setDraft({ ...draft, endTime: e.target.value })} /></label>
                     </div>
                     <div>
                       <div className="flex justify-between text-sm">
@@ -186,8 +193,16 @@ export default function AdminProposals() {
                       Create as draft (schedule it later from the Elections page)
                     </label>
 
+                    <fieldset className="text-sm">
+                      <legend>Show this election on the home page?<Req /></legend>
+                      <div className="mt-1 flex gap-4">
+                        <label className="flex items-center gap-1.5"><input type="radio" name="homePage" checked={draft.showOnHomePage} onChange={() => setDraft({ ...draft, showOnHomePage: true })} /> Yes</label>
+                        <label className="flex items-center gap-1.5"><input type="radio" name="homePage" checked={!draft.showOnHomePage} onChange={() => setDraft({ ...draft, showOnHomePage: false })} /> No</label>
+                      </div>
+                    </fieldset>
+
                     <label className="block text-sm">
-                      Feedback to officer (required for reject / revision)
+                      Feedback to officer (<span className="text-red-600">*</span> required for reject / revision)
                       <textarea className={input} rows={2} value={feedback} onChange={(e) => setFeedback(e.target.value)} />
                     </label>
 
