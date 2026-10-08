@@ -77,7 +77,7 @@ export default function ElectionCountdown({ election, endTime, onStageChange, co
     return (
       <p className={`text-sm ${className}`} role="timer" aria-label={`${label} ${remaining.days} days ${remaining.hours} hours ${remaining.minutes} minutes`}>
         <span className="text-slate-500">{label} </span>
-        <span className="font-mono font-semibold tabular-nums text-slate-900">
+        <span className="whitespace-nowrap font-mono font-semibold tabular-nums text-slate-900">
           {remaining.days > 0 && `${pad(remaining.days)}d : `}{pad(remaining.hours)}h : {pad(remaining.minutes)}m : {pad(remaining.seconds)}s
         </span>
       </p>

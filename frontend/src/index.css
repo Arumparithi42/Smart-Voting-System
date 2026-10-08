@@ -68,3 +68,21 @@
     padding-top: 0;
     padding-bottom: 0;
 }
+
+/* Home page election ticker (components/HomeElections.jsx): the track holds
+   two identical copies of the cards, so moving it by -50% loops seamlessly. */
+@keyframes svs-ticker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+.svs-ticker-track {
+    animation: svs-ticker var(--ticker-duration, 30s) linear infinite;
+}
+.svs-ticker:hover .svs-ticker-track,
+.svs-ticker:focus-within .svs-ticker-track,
+.svs-ticker[data-paused="true"] .svs-ticker-track {
+    animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+    .svs-ticker-track { animation: none; }
+}
