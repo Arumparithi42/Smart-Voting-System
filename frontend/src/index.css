@@ -69,13 +69,17 @@
     padding-bottom: 0;
 }
 
-/* Home page election ticker (components/HomeElections.jsx): the track holds
-   two identical copies of the cards, so moving it by -50% loops seamlessly. */
+/* Home page election news ticker (components/HomeElections.jsx): a classic
+   marquee - the track's left padding equals the strip width, so headlines
+   enter at the right edge and scroll until they have left on the left. */
 @keyframes svs-ticker {
     from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
+    to { transform: translateX(-100%); }
 }
 .svs-ticker-track {
+    display: flex;
+    flex-shrink: 0;
+    padding-left: 100%;
     animation: svs-ticker var(--ticker-duration, 30s) linear infinite;
 }
 .svs-ticker:hover .svs-ticker-track,
@@ -84,5 +88,5 @@
     animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
-    .svs-ticker-track { animation: none; }
+    .svs-ticker-track { animation: none; padding-left: 0; }
 }
